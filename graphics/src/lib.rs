@@ -66,7 +66,7 @@ impl State {
         }
     }
 
-    fn input(&mut self, event: &WindowEvent) -> bool {
+    fn input(&mut self, _: &WindowEvent) -> bool {
         false
     }
 
