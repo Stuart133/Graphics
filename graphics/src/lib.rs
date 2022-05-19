@@ -1,3 +1,4 @@
+use cgmath::*;
 use wgpu::util::*;
 use wgpu::*;
 use winit::{
@@ -61,6 +62,33 @@ const VERTICES: &[Vertex] = &[
 
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
+struct Camera {
+    eye: Point3<f32>,
+    target: Point3<f32>,
+    up: Vector3<f32>,
+    aspect: f32,
+    fovy: f32,
+    znear: f32,
+    zfar: f32,
+}
+
+impl Camera {
+    fn build_view_projection_matrix(&self) -> Matrix4<f32> {
+        let view = Matrix4::look_at_rh(self.eye, self.target, self.up);
+        let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
+
+        return OPENGL_TO_WGPU_MATRIX * proj * view;
+    }
+}
+
+#[rustfmt::skip]
+pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 0.5, 0.0,
+    0.0, 0.0, 0.5, 1.0,
+);
+
 struct State {
     surface: Surface,
     device: Device,
@@ -68,6 +96,7 @@ struct State {
     config: SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: RenderPipeline,
+    camera: Camera,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     index_count: u32,
@@ -151,6 +180,16 @@ impl State {
             label: Some("diffuse_bind_group"),
         });
 
+        let camera = Camera {
+            eye: (0.0, 1.0, 2.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: Vector3::unit_y(),
+            aspect: config.width as f32 / config.height as f32,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 100.0,
+        };
+
         let shader = device.create_shader_module(&include_wgsl!("shader.wgsl"));
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render pipeline layout"),
@@ -211,6 +250,7 @@ impl State {
             config,
             size,
             render_pipeline,
+            camera,
             vertex_buffer,
             index_buffer,
             index_count,
