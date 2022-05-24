@@ -178,15 +178,15 @@ impl State {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera = Camera {
-            eye: (0.0, 1.0, 2.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: Vector3::unit_y(),
-            aspect: config.width as f32 / config.height as f32,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
-        };
+        let camera = Camera::new(
+            (0.0, 1.0, 2.0).into(),
+            (0.0, 0.0, 0.0).into(),
+            Vector3::unit_y(),
+            config.width as f32 / config.height as f32,
+            45.0,
+            0.1,
+            100.0,
+        );
         let camera_controller = CameraController::new(0.2);
 
         let mut camera_uniform = CameraUniform::new();
@@ -309,6 +309,14 @@ impl State {
     fn update(&mut self) {}
 
     fn render(&mut self) -> Result<(), SurfaceError> {
+        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture

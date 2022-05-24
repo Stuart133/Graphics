@@ -30,7 +30,7 @@ impl Texture {
             depth_or_array_layers: 1,
         };
         let texture = device.create_texture(&TextureDescriptor {
-            label: Some("diffuse_texture"),
+            label: label,
             size: size,
             mip_level_count: 1,
             sample_count: 1,
