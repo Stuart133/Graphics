@@ -1,3 +1,4 @@
+use camera::*;
 use cgmath::*;
 use wgpu::util::*;
 use wgpu::*;
@@ -7,6 +8,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+mod camera;
 mod texture;
 
 #[repr(C)]
@@ -62,25 +64,6 @@ const VERTICES: &[Vertex] = &[
 
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
-struct Camera {
-    eye: Point3<f32>,
-    target: Point3<f32>,
-    up: Vector3<f32>,
-    aspect: f32,
-    fovy: f32,
-    znear: f32,
-    zfar: f32,
-}
-
-impl Camera {
-    fn build_view_projection_matrix(&self) -> Matrix4<f32> {
-        let view = Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
-
-        return OPENGL_TO_WGPU_MATRIX * proj * view;
-    }
-}
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
@@ -99,14 +82,6 @@ impl CameraUniform {
     }
 }
 
-#[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.0,
-    0.0, 0.0, 0.5, 1.0,
-);
-
 struct State {
     surface: Surface,
     device: Device,
@@ -114,6 +89,7 @@ struct State {
     config: SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: RenderPipeline,
+    camera_controller: CameraController,
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
@@ -211,6 +187,7 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
+        let camera_controller = CameraController::new(0.2);
 
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
@@ -303,6 +280,7 @@ impl State {
             config,
             size,
             render_pipeline,
+            camera_controller,
             camera,
             camera_uniform,
             camera_buffer,
@@ -324,8 +302,8 @@ impl State {
         }
     }
 
-    fn input(&mut self, _: &WindowEvent) -> bool {
-        false
+    fn input(&mut self, event: &WindowEvent) -> bool {
+        self.camera_controller.process_events(event)
     }
 
     fn update(&mut self) {}
@@ -366,7 +344,7 @@ impl State {
 
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-            
+
             render_pass.draw_indexed(0..self.index_count, 0, 0..1);
         }
 
