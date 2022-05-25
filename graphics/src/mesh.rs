@@ -53,7 +53,8 @@ fn load_indices<'a>(raw_face: Split<&str>, indices: &mut Vec<u16>) {
   for elem in raw_face {
     match elem.split("/").next() {
         Some(index) => {
-          indices.push(index.parse::<u16>().unwrap())  // TODO: Handle error here
+          // TODO: Handle error here
+          indices.push(index.parse::<u16>().unwrap() - 1) // OBJ indexes from 1, subtract 1 for 0 based indexing
         },
         None => todo!(),  // TODO: Handle error here
     }

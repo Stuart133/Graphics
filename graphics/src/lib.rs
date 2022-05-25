@@ -238,7 +238,7 @@ impl State {
             multiview: None,
         });
 
-        let obj = include_str!("../data/sphere.obj");
+        let obj = include_str!("../data/garg.obj");
         let mesh = Mesh::from_string(obj);
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
