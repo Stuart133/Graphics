@@ -4,8 +4,8 @@ use crate::Vertex;
 
 #[derive(Debug)]
 pub struct Mesh {
-    vertices: Vec<Vertex>,
-    indices: Vec<u16>,
+    pub(crate) vertices: Vec<Vertex>,
+    pub(crate) indices: Vec<u16>,
 }
 
 impl Mesh {
@@ -21,6 +21,9 @@ impl Mesh {
                 Some(id) => match id {
                     "v" => {
                         mesh.vertices.push(load_vertex(elements));
+                    },
+                    "f" => {
+                      load_indices(elements, &mut mesh.indices);
                     }
                     _ => {}
                 },
@@ -32,16 +35,27 @@ impl Mesh {
     }
 }
 
-fn load_vertex(split: Split<&str>) -> Vertex {
+fn load_vertex(raw_vertices: Split<&str>) -> Vertex {
     let mut vertex = Vertex {
         position: [0.0, 0.0, 0.0],
         tex_coords: [0.0, 0.0],
     };
 
-    for (i, elem) in split.enumerate() {
+    for (i, elem) in raw_vertices.enumerate() {
         // TODO: Handle error here
         vertex.position[i] = elem.parse::<f32>().unwrap();
     }
 
     vertex
+}
+
+fn load_indices<'a>(raw_face: Split<&str>, indices: &mut Vec<u16>) {
+  for elem in raw_face {
+    match elem.split("/").next() {
+        Some(index) => {
+          indices.push(index.parse::<u16>().unwrap())  // TODO: Handle error here
+        },
+        None => todo!(),  // TODO: Handle error here
+    }
+  }
 }

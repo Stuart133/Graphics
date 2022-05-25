@@ -41,26 +41,6 @@ impl Vertex {
     }
 }
 
-const CUBE: &[Vertex] = &[
-    Vertex {
-        position: [-1.0, -1.0, 1.0],
-        tex_coords: [0.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, -1.0, 1.0],
-        tex_coords: [1.0, 1.0],
-    },
-    Vertex {
-        position: [-1.0, 1.0, 1.0],
-        tex_coords: [0.0, 0.0],
-    },
-    Vertex {
-        position: [1.0, 1.0, 1.0],
-        tex_coords: [1.0, 0.0],
-    },
-];
-const CUBE_INDICES: &[u16] = &[0, 1, 2, 1, 3, 2];
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
@@ -100,11 +80,6 @@ struct State {
 
 impl State {
     async fn new(window: &Window) -> Self {
-        let obj = include_str!("../data/sphere.obj");
-        let mesh = Mesh::from_string(obj);
-        println!("{:?}", mesh);
-
-
         let size = window.inner_size();
 
         let instance = Instance::new(Backends::all());
@@ -263,17 +238,20 @@ impl State {
             multiview: None,
         });
 
+        let obj = include_str!("../data/sphere.obj");
+        let mesh = Mesh::from_string(obj);
+
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex buffer"),
-            contents: bytemuck::cast_slice(CUBE),
+            contents: bytemuck::cast_slice(&mesh.vertices),
             usage: BufferUsages::VERTEX,
         });
         let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Index buffer"),
-            contents: bytemuck::cast_slice(CUBE_INDICES),
+            contents: bytemuck::cast_slice(&mesh.indices),
             usage: BufferUsages::INDEX,
         });
-        let index_count = CUBE_INDICES.len() as u32;
+        let index_count = mesh.indices.len() as u32;
 
         Self {
             surface,
