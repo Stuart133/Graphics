@@ -1,6 +1,6 @@
 use camera::*;
 use cgmath::*;
-use mesh::Mesh;
+use model::Model;
 use wgpu::util::*;
 use wgpu::*;
 use winit::{
@@ -10,7 +10,7 @@ use winit::{
 };
 
 mod camera;
-mod mesh;
+mod model;
 mod texture;
 
 #[repr(C)]
@@ -237,7 +237,7 @@ impl State {
         });
 
         let obj = include_str!("../data/garg.obj");
-        let mesh = Mesh::from_string(obj);
+        let mesh = Model::from_string(obj);
 
         let mesh_vertices = mesh.vertices();
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {

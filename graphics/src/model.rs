@@ -1,6 +1,43 @@
 use std::str::Split;
 
-use crate::Vertex;
+use wgpu::*;
+
+trait Vertex {
+    fn desc<'a>() -> VertexBufferLayout<'a>;
+}
+
+#[derive(Debug)]
+struct ModelVertex {
+    position: [f32; 3],
+    texture_coords: [f32; 2],
+    normal: [f32; 3],
+}
+
+impl Vertex for ModelVertex {
+    fn desc<'a>() -> VertexBufferLayout<'a> {
+        VertexBufferLayout {
+            array_stride: std::mem::size_of::<ModelVertex>() as BufferAddress,
+            step_mode: VertexStepMode::Vertex,
+            attributes: &[
+                VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: VertexFormat::Float32x3,
+                },
+                VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as BufferAddress,
+                    shader_location: 1,
+                    format: VertexFormat::Float32x2,
+                },
+                VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 5]>() as BufferAddress,
+                    shader_location: 2,
+                    format: VertexFormat::Float32x3,
+                }
+            ],
+        }
+    }
+}
 
 #[derive(Debug)]
 struct Face {
@@ -10,15 +47,15 @@ struct Face {
 }
 
 #[derive(Debug)]
-pub struct Mesh {
+pub struct Model {
     faces: Vec<Face>,
     vertices: Vec<[f32; 3]>,
     texture_coords: Vec<[f32; 2]>,
 }
 
-impl Mesh {
-    pub fn from_string(data: &str) -> Mesh {
-        let mut mesh = Mesh {
+impl Model {
+    pub fn from_string(data: &str) -> Model {
+        let mut mesh = Model {
             faces: vec![],
             vertices: vec![],
             texture_coords: vec!(),
