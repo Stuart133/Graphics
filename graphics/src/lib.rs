@@ -15,7 +15,7 @@ mod texture;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
+pub(crate) struct Vertex {
     position: [f32; 3],
     tex_coords: [f32; 2],
 }
@@ -72,10 +72,8 @@ struct State {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     vertex_buffer: Buffer,
-    index_buffer: Buffer,
-    index_count: u32,
+    vertex_buffer_count: u32,
     diffuse_bind_group: BindGroup,
-    diffuse_texture: texture::Texture,
 }
 
 impl State {
@@ -238,20 +236,17 @@ impl State {
             multiview: None,
         });
 
-        let obj = include_str!("../data/garg.obj");
+        let obj = include_str!("../data/sphere.obj");
         let mesh = Mesh::from_string(obj);
 
+        let mesh_vertices = mesh.vertices();
+        println!("{:?}", mesh);
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex buffer"),
-            contents: bytemuck::cast_slice(&mesh.vertices),
+            contents: bytemuck::cast_slice(&mesh_vertices),
             usage: BufferUsages::VERTEX,
         });
-        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Index buffer"),
-            contents: bytemuck::cast_slice(&mesh.indices),
-            usage: BufferUsages::INDEX,
-        });
-        let index_count = mesh.indices.len() as u32;
+        let vertex_buffer_count = mesh_vertices.len() as u32;
 
         Self {
             surface,
@@ -266,10 +261,8 @@ impl State {
             camera_buffer,
             camera_bind_group,
             vertex_buffer,
-            index_buffer,
-            index_count,
+            vertex_buffer_count,
             diffuse_bind_group,
-            diffuse_texture,
         }
     }
 
@@ -331,9 +324,9 @@ impl State {
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+            // render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
 
-            render_pass.draw_indexed(0..self.index_count, 0, 0..1);
+            render_pass.draw(0..self.vertex_buffer_count, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
