@@ -3,18 +3,19 @@ use std::str::Split;
 use wgpu::*;
 
 trait Vertex {
-    fn desc<'a>() -> VertexBufferLayout<'a>;
+    fn desc<'a>(&self) -> VertexBufferLayout<'a>;
 }
 
-#[derive(Debug)]
-struct ModelVertex {
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ModelVertex {
     position: [f32; 3],
     texture_coords: [f32; 2],
     normal: [f32; 3],
 }
 
 impl Vertex for ModelVertex {
-    fn desc<'a>() -> VertexBufferLayout<'a> {
+    fn desc<'a>(&self) -> VertexBufferLayout<'a> {
         VertexBufferLayout {
             array_stride: std::mem::size_of::<ModelVertex>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,
