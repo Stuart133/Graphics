@@ -112,9 +112,9 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        let diffuse_bytes = include_bytes!("happy-tree.png");
+        let diffuse_bytes = include_bytes!("../data/green.jpg");
         let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
+            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "green").unwrap();
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -236,11 +236,10 @@ impl State {
             multiview: None,
         });
 
-        let obj = include_str!("../data/sphere.obj");
+        let obj = include_str!("../data/garg.obj");
         let mesh = Mesh::from_string(obj);
 
         let mesh_vertices = mesh.vertices();
-        println!("{:?}", mesh);
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex buffer"),
             contents: bytemuck::cast_slice(&mesh_vertices),

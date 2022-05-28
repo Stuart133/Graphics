@@ -4,9 +4,9 @@ use crate::Vertex;
 
 #[derive(Debug)]
 struct Face {
-    vertices: [usize; 3],
-    texture_coords: [usize; 3],
-    normals: [usize; 3],
+    vertices: Vec<usize>,
+    texture_coords: Vec<usize>,
+    normals: Vec<usize>,
 }
 
 #[derive(Debug)]
@@ -49,10 +49,11 @@ impl Mesh {
     pub(crate) fn vertices(&self) -> Vec<Vertex> {
         let mut vertices = vec![];
         for face in &self.faces {
-            for i in face.vertices {
+            for i in &face.vertices {
                 vertices.push(Vertex {
-                    position: self.vertices[i],
-                    tex_coords: self.texture_coords[i],
+                    position: self.vertices[*i],
+                    tex_coords: [0.0, 0.0],
+                    // tex_coords: self.texture_coords[*i],
                 })
     
             }
@@ -77,6 +78,9 @@ fn load_texture_coord(raw_coord: Split<&str>) -> [f32; 2] {
     let mut texture_coord = [0.0; 2];
 
     for (i, elem) in raw_coord.enumerate() {
+        if i >= 2 {
+            continue;
+        }
         texture_coord[i] = elem.parse::<f32>().unwrap();
     }
 
@@ -85,18 +89,26 @@ fn load_texture_coord(raw_coord: Split<&str>) -> [f32; 2] {
 
 fn load_face(raw_face: Split<&str>) -> Face {
     let mut face = Face {
-        vertices: [0; 3],
-        texture_coords: [0; 3],
-        normals: [0; 3],
+        vertices: vec!(),
+        texture_coords: vec!(),
+        normals: vec!(),
     };
 
-    for (i, elem) in raw_face.enumerate() {
-        for (j, index) in elem.split("/").enumerate() {
+    for elem in raw_face {
+        if elem == "" {
+            continue;
+        }
+        for (j, raw_index) in elem.split("/").enumerate() {
+            let index = raw_index.parse::<usize>().unwrap();
+            if index == 0 {
+                continue;
+            }
+
             match j {
                 // OBJ indexes from 1, subtract 1 for 0 based indexing
-                0 => face.vertices[i] = index.parse::<usize>().unwrap() - 1,
-                1 => face.texture_coords[i] = index.parse::<usize>().unwrap() - 1,
-                2 => face.normals[i] = index.parse::<usize>().unwrap() - 1,
+                0 => face.vertices.push(index - 1),
+                1 => face.texture_coords.push(index - 1),
+                2 => face.normals.push(index - 1),
                 _ => panic!("TODO: Fix this panic"),
             }
         }
