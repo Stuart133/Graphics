@@ -38,7 +38,7 @@ impl Mesh {
                         Ok(_) => {}
                         Err(err) => return Err(err),
                     },
-                    "vn" => match loader.load_texture_coord(elements) {
+                    "vn" => match loader.load_normal(elements) {
                         Ok(_) => {}
                         Err(err) => return Err(err),
                     },
@@ -74,11 +74,6 @@ impl Default for MeshLoader {
     }
 }
 
-enum ExportVertex {
-    Exists(usize),
-    New(ModelVertex),
-}
-
 impl MeshLoader {
     fn export_faces(&self) -> Mesh {
         let mut mesh = Mesh::default();
@@ -91,7 +86,12 @@ impl MeshLoader {
         mesh
     }
 
-    fn export_face(&self, face: &Face, mesh: &mut Mesh, vertex_map: &mut HashMap<VertexIndices, usize>) {
+    fn export_face(
+        &self,
+        face: &Face,
+        mesh: &mut Mesh,
+        vertex_map: &mut HashMap<VertexIndices, usize>,
+    ) {
         match face {
             // Ignore points
             Face::Point(_) => {}
@@ -106,16 +106,21 @@ impl MeshLoader {
         }
     }
 
-    fn export_vertex(&self, indices: &VertexIndices, mesh: &mut Mesh, vertex_map: &mut HashMap<VertexIndices, usize>) {
+    fn export_vertex(
+        &self,
+        indices: &VertexIndices,
+        mesh: &mut Mesh,
+        vertex_map: &mut HashMap<VertexIndices, usize>,
+    ) {
         let index = vertex_map.get(&indices);
         match index {
-            Some(index) =>  mesh.indices.push(*index),
+            Some(index) => mesh.indices.push(*index),
             None => {
-                let vertex = ModelVertex {
-                    position: self.positions[indices.position],
-                    texture_coords: self.texture_coords[indices.texture_coord],
-                    normal: self.normals[indices.normal],
-                };
+                let vertex = ModelVertex::new(
+                    self.positions[indices.position],
+                    self.texture_coords[indices.texture_coord],
+                    self.normals[indices.normal],
+                );
                 mesh.indices.push(mesh.vertices.len());
                 mesh.vertices.push(vertex);
             }
@@ -123,7 +128,7 @@ impl MeshLoader {
     }
 
     fn load_face(&mut self, raw_face: Split<&str>) -> Result<(), ObjLoadError> {
-        let face = vec![];
+        let mut face = vec![];
 
         for group in raw_face {
             let mut indices = VertexIndices::default();
@@ -141,11 +146,11 @@ impl MeshLoader {
                         2 => indices.normal = index - 1,
                         _ => return Err(ObjLoadError::InvalidFaceValue),
                     },
-                    Err(err) => return Err(ObjLoadError::InvalidFaceValue),
+                    Err(_) => return Err(ObjLoadError::InvalidFaceValue),
                 }
-
-                face.push(indices);
             }
+
+            face.push(indices);
         }
 
         match face.len() {
@@ -196,7 +201,7 @@ impl MeshLoader {
         for (i, elem) in raw_normal.enumerate() {
             match elem.parse::<f32>() {
                 Ok(val) => normal[i] = val,
-                Err(_) => return Err(ObjLoadError::InvalidPositionValue),
+                Err(_) => return Err(ObjLoadError::InvalidNormalValue),
             }
         }
         self.normals.push(normal);
@@ -212,7 +217,7 @@ pub enum ObjLoadError {
     InvalidFaceValue,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct VertexIndices {
     position: usize,
     texture_coord: usize,

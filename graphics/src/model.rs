@@ -14,6 +14,16 @@ pub struct ModelVertex {
     normal: [f32; 3],
 }
 
+impl ModelVertex {
+    pub fn new(position: [f32; 3], texture_coords: [f32; 2], normal: [f32; 3]) -> ModelVertex {
+        ModelVertex {
+            position,
+            texture_coords,
+            normal,
+        }
+    }
+}
+
 impl Vertex for ModelVertex {
     fn desc<'a>() -> VertexBufferLayout<'a> {
         VertexBufferLayout {

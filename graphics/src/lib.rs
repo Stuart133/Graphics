@@ -45,7 +45,7 @@ struct State {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     vertex_buffer: Buffer,
-    index_buffer: wgpu::Buffer, 
+    index_buffer: wgpu::Buffer,
     index_buffer_count: u32,
     diffuse_bind_group: BindGroup,
 }
