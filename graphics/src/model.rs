@@ -2,8 +2,8 @@ use std::str::Split;
 
 use wgpu::*;
 
-trait Vertex {
-    fn desc<'a>(&self) -> VertexBufferLayout<'a>;
+pub trait Vertex {
+    fn desc<'a>() -> VertexBufferLayout<'a>;
 }
 
 #[repr(C)]
@@ -15,7 +15,7 @@ pub struct ModelVertex {
 }
 
 impl Vertex for ModelVertex {
-    fn desc<'a>(&self) -> VertexBufferLayout<'a> {
+    fn desc<'a>() -> VertexBufferLayout<'a> {
         VertexBufferLayout {
             array_stride: std::mem::size_of::<ModelVertex>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,
@@ -34,7 +34,7 @@ impl Vertex for ModelVertex {
                     offset: std::mem::size_of::<[f32; 5]>() as BufferAddress,
                     shader_location: 2,
                     format: VertexFormat::Float32x3,
-                }
+                },
             ],
         }
     }
@@ -54,82 +54,13 @@ pub struct Model {
     texture_coords: Vec<[f32; 2]>,
 }
 
-impl Model {
-    pub fn from_string(data: &str) -> Model {
-        let mut mesh = Model {
-            faces: vec![],
-            vertices: vec![],
-            texture_coords: vec!(),
-        };
-
-        for line in data.lines() {
-            let mut elements = line.split(" ");
-            match elements.next() {
-                Some(id) => match id {
-                    "v" => {
-                        mesh.vertices.push(load_vertex(elements));
-                    }
-                    "vt" => {
-                        mesh.texture_coords.push(load_texture_coord(elements));
-                    }
-                    "f" => {
-                        mesh.faces.push(load_face(elements));
-                    }
-                    _ => {}
-                },
-                None => {}
-            }
-        }
-
-        mesh
-    }
-
-    pub(crate) fn vertices(&self) -> Vec<Vertex> {
-        let mut vertices = vec![];
-        for face in &self.faces {
-            for i in &face.vertices {
-                vertices.push(Vertex {
-                    position: self.vertices[*i],
-                    tex_coords: [0.0, 0.0],
-                    // tex_coords: self.texture_coords[*i],
-                })
-    
-            }
-        }
-
-        vertices
-    }
-}
-
-fn load_vertex(raw_vertices: Split<&str>) -> [f32; 3] {
-    let mut vertex = [0.0; 3];
-
-    for (i, elem) in raw_vertices.enumerate() {
-        // TODO: Handle error here
-        vertex[i] = elem.parse::<f32>().unwrap();
-    }
-
-    vertex
-}
-
-fn load_texture_coord(raw_coord: Split<&str>) -> [f32; 2] {
-    let mut texture_coord = [0.0; 2];
-
-    for (i, elem) in raw_coord.enumerate() {
-        if i >= 2 {
-            continue;
-        }
-        texture_coord[i] = elem.parse::<f32>().unwrap();
-    }
-
-    texture_coord
-}
+impl Model {}
 
 fn load_face(raw_face: Split<&str>) -> Face {
     let mut face = Face {
-        vertices: vec!(),
-        texture_coords: vec!(),
-        normals: vec!(),
+        vertices: vec![],
+        texture_coords: vec![],
+        normals: vec![],
     };
 
     for elem in raw_face {

@@ -1,6 +1,6 @@
 use camera::*;
 use cgmath::*;
-use model::{Model, ModelVertex};
+use model::{Model, ModelVertex, Vertex};
 use wgpu::util::*;
 use wgpu::*;
 use winit::{
@@ -11,6 +11,7 @@ use winit::{
 
 mod camera;
 mod model;
+mod obj;
 mod texture;
 
 #[repr(C)]
