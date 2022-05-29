@@ -1,59 +1,39 @@
-//! A simple .obj mesh loader
+//! A simple .obj mesh loading module
 
 use std::{collections::HashMap, str::Split};
 
-use crate::model::ModelVertex;
+use crate::model::{Mesh, ModelVertex};
 
-#[derive(Debug)]
-pub struct Mesh {
-    /// Vector of mesh vertices
-    pub vertices: Vec<ModelVertex>,
+pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
+    let mut loader = MeshLoader::default();
 
-    /// Vector of vertex indices
-    pub indices: Vec<u32>,
-}
-
-impl Default for Mesh {
-    fn default() -> Self {
-        Self {
-            vertices: Default::default(),
-            indices: Default::default(),
-        }
-    }
-}
-
-impl Mesh {
-    pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
-        let mut loader = MeshLoader::default();
-
-        for line in raw_mesh.lines() {
-            let mut elements = line.split(" ");
-            match elements.next() {
-                Some(key) => match key {
-                    "v" => match loader.load_vertex(elements) {
-                        Ok(_) => {}
-                        Err(err) => return Err(err),
-                    },
-                    "vt" => match loader.load_texture_coord(elements) {
-                        Ok(_) => {}
-                        Err(err) => return Err(err),
-                    },
-                    "vn" => match loader.load_normal(elements) {
-                        Ok(_) => {}
-                        Err(err) => return Err(err),
-                    },
-                    "f" => match loader.load_face(elements) {
-                        Ok(_) => {}
-                        Err(err) => return Err(err),
-                    },
-                    _ => {} // Just ignore any unrecognised key
+    for line in raw_mesh.lines() {
+        let mut elements = line.split(" ");
+        match elements.next() {
+            Some(key) => match key {
+                "v" => match loader.load_vertex(elements) {
+                    Ok(_) => {}
+                    Err(err) => return Err(err),
                 },
-                None => {}
-            }
+                "vt" => match loader.load_texture_coord(elements) {
+                    Ok(_) => {}
+                    Err(err) => return Err(err),
+                },
+                "vn" => match loader.load_normal(elements) {
+                    Ok(_) => {}
+                    Err(err) => return Err(err),
+                },
+                "f" => match loader.load_face(elements) {
+                    Ok(_) => {}
+                    Err(err) => return Err(err),
+                },
+                _ => {} // Just ignore any unrecognised key
+            },
+            None => {}
         }
-
-        Ok(loader.export_faces())
     }
+
+    Ok(loader.export_faces())
 }
 
 struct MeshLoader {
@@ -112,7 +92,7 @@ impl MeshLoader {
                 self.export_vertex(&vertex_indices[0], mesh, vertex_map);
                 self.export_vertex(&vertex_indices[2], mesh, vertex_map);
                 self.export_vertex(&vertex_indices[3], mesh, vertex_map);
-            },
+            }
         }
     }
 

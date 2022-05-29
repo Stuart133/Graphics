@@ -1,7 +1,5 @@
 use wgpu::*;
 
-use crate::obj::Mesh;
-
 pub trait Vertex {
     fn desc<'a>() -> VertexBufferLayout<'a>;
 }
@@ -51,6 +49,25 @@ impl Vertex for ModelVertex {
 }
 
 #[derive(Debug)]
+pub struct Mesh {
+    /// Vector of mesh vertices
+    pub vertices: Vec<ModelVertex>,
+
+    /// Vector of vertex indices
+    pub indices: Vec<u32>,
+}
+
+impl Default for Mesh {
+    fn default() -> Self {
+        Self {
+            vertices: Default::default(),
+            indices: Default::default(),
+        }
+    }
+}
+
+// TODO: Pass through errors better
+#[derive(Debug)]
 pub enum ModelLoadError {
     InvalidModel,
 }
@@ -63,7 +80,7 @@ pub struct Model<'a> {
 
 impl<'a> Model<'a> {
     pub fn from_str(raw_model: &str, label: Option<&'a str>) -> Result<Model<'a>, ModelLoadError> {
-        match Mesh::from_str(raw_model) {
+        match crate::obj::from_str(raw_model) {
             Ok(mesh) => Ok(Model {
                 meshes: vec![mesh],
                 label,
