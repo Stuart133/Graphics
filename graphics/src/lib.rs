@@ -45,7 +45,8 @@ struct State {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     vertex_buffer: Buffer,
-    vertex_buffer_count: u32,
+    index_buffer: wgpu::Buffer, 
+    index_buffer_count: u32,
     diffuse_bind_group: BindGroup,
 }
 
@@ -210,15 +211,20 @@ impl State {
         });
 
         let obj = include_str!("../data/garg.obj");
-        let mesh = Model::from_string(obj);
+        let model = Model::from_str(obj, Some("model")).unwrap();
 
-        let mesh_vertices = mesh.vertices();
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex buffer"),
-            contents: bytemuck::cast_slice(&mesh_vertices),
+            contents: bytemuck::cast_slice(&model.meshes[0].vertices),
             usage: BufferUsages::VERTEX,
         });
-        let vertex_buffer_count = mesh_vertices.len() as u32;
+
+        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Index buffer"),
+            contents: bytemuck::cast_slice(&model.meshes[0].indices),
+            usage: BufferUsages::INDEX,
+        });
+        let index_buffer_count = model.meshes[0].indices.len() as u32;
 
         Self {
             surface,
@@ -233,7 +239,8 @@ impl State {
             camera_buffer,
             camera_bind_group,
             vertex_buffer,
-            vertex_buffer_count,
+            index_buffer,
+            index_buffer_count,
             diffuse_bind_group,
         }
     }
@@ -296,9 +303,9 @@ impl State {
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            // render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
 
-            render_pass.draw(0..self.vertex_buffer_count, 0..1);
+            render_pass.draw_indexed(0..self.index_buffer_count, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

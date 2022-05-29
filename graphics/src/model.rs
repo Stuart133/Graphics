@@ -1,6 +1,6 @@
-use std::str::Split;
-
 use wgpu::*;
+
+use crate::obj::Mesh;
 
 pub trait Vertex {
     fn desc<'a>() -> VertexBufferLayout<'a>;
@@ -41,47 +41,24 @@ impl Vertex for ModelVertex {
 }
 
 #[derive(Debug)]
-struct Face {
-    vertices: Vec<usize>,
-    texture_coords: Vec<usize>,
-    normals: Vec<usize>,
+pub enum ModelLoadError {
+    InvalidModel,
 }
 
 #[derive(Debug)]
-pub struct Model {
-    faces: Vec<Face>,
-    vertices: Vec<[f32; 3]>,
-    texture_coords: Vec<[f32; 2]>,
+pub struct Model<'a> {
+    pub meshes: Vec<Mesh>,
+    pub label: Option<&'a str>,
 }
 
-impl Model {}
-
-fn load_face(raw_face: Split<&str>) -> Face {
-    let mut face = Face {
-        vertices: vec![],
-        texture_coords: vec![],
-        normals: vec![],
-    };
-
-    for elem in raw_face {
-        if elem == "" {
-            continue;
-        }
-        for (j, raw_index) in elem.split("/").enumerate() {
-            let index = raw_index.parse::<usize>().unwrap();
-            if index == 0 {
-                continue;
-            }
-
-            match j {
-                // OBJ indexes from 1, subtract 1 for 0 based indexing
-                0 => face.vertices.push(index - 1),
-                1 => face.texture_coords.push(index - 1),
-                2 => face.normals.push(index - 1),
-                _ => panic!("TODO: Fix this panic"),
-            }
+impl<'a> Model<'a> {
+    pub fn from_str(raw_model: &str, label: Option<&'a str>) -> Result<Model<'a>, ModelLoadError> {
+        match Mesh::from_str(raw_model) {
+            Ok(mesh) => Ok(Model {
+                meshes: vec![mesh],
+                label,
+            }),
+            Err(_) => Err(ModelLoadError::InvalidModel),
         }
     }
-
-    face
 }
