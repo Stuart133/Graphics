@@ -102,7 +102,17 @@ impl MeshLoader {
                     self.export_vertex(vi, mesh, vertex_map);
                 }
             }
-            Face::Quad(_) => println!("{:?}", face),
+            Face::Quad(vertex_indices) => {
+                // Split the quad into 2 triangles - With vertices 0, 1, 2
+                for vi in &vertex_indices[0..3] {
+                    self.export_vertex(vi, mesh, vertex_map);
+                }
+
+                // & vertices 1, 2, 3
+                self.export_vertex(&vertex_indices[0], mesh, vertex_map);
+                self.export_vertex(&vertex_indices[2], mesh, vertex_map);
+                self.export_vertex(&vertex_indices[3], mesh, vertex_map);
+            },
         }
     }
 

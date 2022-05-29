@@ -210,7 +210,7 @@ impl State {
             multiview: None,
         });
 
-        let obj = include_str!("../data/donut.obj");
+        let obj = include_str!("../data/cube.obj");
         let model = Model::from_str(obj, Some("model")).unwrap();
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
