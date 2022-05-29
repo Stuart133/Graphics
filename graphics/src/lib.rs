@@ -86,7 +86,7 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        let diffuse_bytes = include_bytes!("../data/green.jpg");
+        let diffuse_bytes = include_bytes!("../data/cube-diffuse.jpg");
         let diffuse_texture =
             texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "green").unwrap();
 
@@ -210,7 +210,7 @@ impl State {
             multiview: None,
         });
 
-        let obj = include_str!("../data/garg.obj");
+        let obj = include_str!("../data/donut.obj");
         let model = Model::from_str(obj, Some("model")).unwrap();
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
@@ -303,7 +303,7 @@ impl State {
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
 
             render_pass.draw_indexed(0..self.index_buffer_count, 0, 0..1);
         }

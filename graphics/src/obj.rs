@@ -10,7 +10,7 @@ pub struct Mesh {
     pub vertices: Vec<ModelVertex>,
 
     /// Vector of vertex indices
-    pub indices: Vec<usize>,
+    pub indices: Vec<u32>,
 }
 
 impl Default for Mesh {
@@ -114,15 +114,19 @@ impl MeshLoader {
     ) {
         let index = vertex_map.get(&indices);
         match index {
-            Some(index) => mesh.indices.push(*index),
+            Some(index) => mesh.indices.push(*index as u32),
             None => {
                 let vertex = ModelVertex::new(
                     self.positions[indices.position],
                     self.texture_coords[indices.texture_coord],
                     self.normals[indices.normal],
                 );
-                mesh.indices.push(mesh.vertices.len());
+
+                let index = mesh.vertices.len();
+                mesh.indices.push(index as u32);
                 mesh.vertices.push(vertex);
+
+                vertex_map.insert(*indices, index);
             }
         }
     }
