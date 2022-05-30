@@ -285,10 +285,11 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
-            render_pass.set_vertex_buffer(0, self.model.meshes[0].vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.model.meshes[0].index_buffer.slice(..), IndexFormat::Uint32);
-
-            render_pass.draw_indexed(0..self.model.meshes[0].vertex_count, 0, 0..1);
+            for mesh in self.model.meshes.iter() {
+                render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);   
+                render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);    
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
