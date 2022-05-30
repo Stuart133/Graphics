@@ -287,8 +287,8 @@ impl<'a> State<'a> {
 
             for mesh in self.model.meshes.iter() {
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);   
-                render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);    
+                render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);
+                render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);
             }
         }
 
