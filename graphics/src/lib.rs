@@ -32,7 +32,7 @@ impl CameraUniform {
     }
 }
 
-struct State {
+struct State<'a> {
     surface: Surface,
     device: Device,
     queue: Queue,
@@ -44,14 +44,12 @@ struct State {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    vertex_buffer: Buffer,
-    index_buffer: wgpu::Buffer,
-    index_buffer_count: u32,
+    model: Model<'a>,
     diffuse_bind_group: BindGroup,
 }
 
-impl State {
-    async fn new(window: &Window) -> Self {
+impl<'a> State<'a> {
+    async fn new(window: &Window) -> State<'a> {
         let size = window.inner_size();
 
         let instance = Instance::new(Backends::all());
@@ -210,21 +208,8 @@ impl State {
             multiview: None,
         });
 
-        let obj = include_str!("../data/cube.obj");
-        let model = Model::from_str(obj, Some("model")).unwrap();
-
-        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Vertex buffer"),
-            contents: bytemuck::cast_slice(&model.meshes[0].vertices),
-            usage: BufferUsages::VERTEX,
-        });
-
-        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Index buffer"),
-            contents: bytemuck::cast_slice(&model.meshes[0].indices),
-            usage: BufferUsages::INDEX,
-        });
-        let index_buffer_count = model.meshes[0].indices.len() as u32;
+        let obj = include_str!("../data/torus.obj");
+        let model = Model::from_str(obj, &device, Some("model")).unwrap();
 
         Self {
             surface,
@@ -238,9 +223,7 @@ impl State {
             camera_uniform,
             camera_buffer,
             camera_bind_group,
-            vertex_buffer,
-            index_buffer,
-            index_buffer_count,
+            model,
             diffuse_bind_group,
         }
     }
@@ -302,10 +285,10 @@ impl State {
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
+            render_pass.set_vertex_buffer(0, self.model.meshes[0].vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.model.meshes[0].index_buffer.slice(..), IndexFormat::Uint32);
 
-            render_pass.draw_indexed(0..self.index_buffer_count, 0, 0..1);
+            render_pass.draw_indexed(0..self.model.meshes[0].vertex_count, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

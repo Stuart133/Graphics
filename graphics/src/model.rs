@@ -1,4 +1,4 @@
-use wgpu::*;
+use wgpu::{*, util::{BufferInitDescriptor, DeviceExt}};
 
 pub trait Vertex {
     fn desc<'a>() -> VertexBufferLayout<'a>;
@@ -74,15 +74,44 @@ pub enum ModelLoadError {
 
 #[derive(Debug)]
 pub struct Model<'a> {
-    pub meshes: Vec<Mesh>,
+    pub meshes: Vec<GpuMesh>,   // TODO: Probably move vertex/index buffer to here
     pub label: Option<&'a str>,
 }
 
+/// Mesh representation for sending to the GPU
+#[derive(Debug)]
+pub struct GpuMesh {
+    pub vertex_buffer: Buffer,
+    pub index_buffer: Buffer,
+    pub vertex_count: u32,
+}
+
+impl GpuMesh {
+    fn from_mesh(mesh: Mesh, device: &Device) -> Self {
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some(&format!("Vertex Buffer")),
+            contents: bytemuck::cast_slice(&mesh.vertices),
+            usage: BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some(&format!("Index Buffer")),
+            contents: bytemuck::cast_slice(&mesh.indices),
+            usage: BufferUsages::INDEX,
+        });
+        
+        GpuMesh {
+            vertex_buffer,
+            index_buffer,
+            vertex_count: mesh.indices.len() as u32,    // TODO: Cast more sensibly
+        }
+    }
+}
+
 impl<'a> Model<'a> {
-    pub fn from_str(raw_model: &str, label: Option<&'a str>) -> Result<Model<'a>, ModelLoadError> {
+    pub fn from_str(raw_model: &str, device: &Device, label: Option<&'a str>) -> Result<Model<'a>, ModelLoadError> {
         match crate::obj::from_str(raw_model) {
             Ok(mesh) => Ok(Model {
-                meshes: vec![mesh],
+                meshes: vec![GpuMesh::from_mesh(mesh, device)],
                 label,
             }),
             Err(_) => Err(ModelLoadError::InvalidModel),
