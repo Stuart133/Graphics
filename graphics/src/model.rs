@@ -66,12 +66,15 @@ pub struct Mesh {
 
     /// Vector of vertex indices
     pub indices: Vec<u32>,
+
+    /// Material to apply to mesh
+    pub material: Option<Material>,
 }
 
 /// A generalized material to be applied to a mesh
 ///
 /// This is not necessarily in a form ready for consumption by the GPU
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Material {
     /// Name of the material
     pub name: String,
@@ -80,16 +83,16 @@ pub struct Material {
     pub specular_exponent: f32,
 
     /// Specular color of the material
-    pub specular_color: Vector3<f32>,
+    pub specular_color: [f32; 3],
 
     /// Ambient color of the material
-    pub ambient_color: Vector3<f32>,
+    pub ambient_color: [f32; 3],
 
     /// Diffuse color of the material
-    pub diffuse_color: Vector3<f32>,
+    pub diffuse_color: [f32; 3],
 
     /// Emissive color of the material
-    pub emissive_color: Vector3<f32>,
+    pub emissive_color: [f32; 3],
 
     /// Index of refraction of the material
     pub optical_density: f32,

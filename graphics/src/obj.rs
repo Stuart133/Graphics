@@ -1,8 +1,8 @@
-//! A simple .obj mesh loading module
+//! A simple .obj model loading module
 
-use std::{collections::HashMap, str::Split};
+use std::{collections::HashMap, str::{Split, FromStr}};
 
-use crate::model::{Mesh, ModelVertex};
+use crate::model::{Material, Mesh, ModelVertex};
 
 pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
     let mut loader = MeshLoader::default();
@@ -36,22 +36,78 @@ pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
     Ok(loader.export_faces())
 }
 
+struct ModelLoader {
+    meshes: Vec<Mesh>,
+    materials: Vec<Material>,
+}
+
+fn load_mtl(raw_mtl: &str) -> Material {
+    let mut material = Material::default();
+
+    for line in raw_mtl.lines() {
+        let mut elements = line.split(" ");
+        match elements.next() {
+            Some(key) => match key {
+                "Ns" => material.specular_exponent = load_float(elements.next()),
+                "Ka" => material.ambient_color = load_n_float::<3>(&mut elements),
+                "Kd" => material.diffuse_color = load_n_float::<3>(&mut elements),
+                "Ks" => material.specular_color = load_n_float::<3>(&mut elements),
+                "Ke" => material.emissive_color = load_n_float::<3>(&mut elements),
+                "Ni" => material.optical_density = load_float(elements.next()),
+                "d" => material.opacity = load_float(elements.next()),
+                "Tr" => material.opacity = 1.0 - load_float(elements.next()),  // Transparency is the inverse of opacity
+                // "Tr" => material.illumination_mode = load_num::<u32>(elements.next()),  // Transparency is the inverse of opacity
+                _ => {} // Just ignore any unrecognised key
+            },
+            None => {}
+        }
+    }
+
+    material
+}
+
+fn load_num<T: FromStr>(raw_num: Option<&str>) -> Result<T, ()> {
+    match raw_num {
+        Some(raw_float) => {
+            let float = raw_float.parse::<T>();
+            match float {
+                Ok(float) => Ok(float),
+                Err(_) => Err(()),
+            }
+        }
+        None => Err(()),
+    }
+}
+
+fn load_float(raw_float: Option<&str>) -> f32 {
+    match raw_float {
+        Some(raw_float) => {
+            raw_float.parse::<f32>().unwrap() // TODO: Handle the result here
+        }
+        None => todo!(), // TODO: This should be a result
+    }
+}
+
+fn load_n_float<const N: usize>(raw_n_float: &mut Split<&str>) -> [f32; N] {
+    let mut n_float = [0.0; N];
+
+    for i in 0..N {
+        let raw_float = raw_n_float.next();
+        match raw_float {
+            Some(raw_float) => n_float[i] = raw_float.parse::<f32>().unwrap(), // TODO: Handle the result here,
+            None => todo!(), // TODO: This should be a result
+        }
+    }
+
+    n_float
+}
+
+#[derive(Default)]
 struct MeshLoader {
     faces: Vec<Face>,
     positions: Vec<[f32; 3]>,
     texture_coords: Vec<[f32; 2]>,
     normals: Vec<[f32; 3]>,
-}
-
-impl Default for MeshLoader {
-    fn default() -> Self {
-        Self {
-            faces: Default::default(),
-            positions: Default::default(),
-            texture_coords: Default::default(),
-            normals: Default::default(),
-        }
-    }
 }
 
 impl MeshLoader {
@@ -204,13 +260,6 @@ impl MeshLoader {
     }
 }
 
-pub enum ObjLoadError {
-    InvalidPositionValue,
-    InvalidTextureCoordValue,
-    InvalidNormalValue,
-    InvalidFaceValue,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct VertexIndices {
     position: usize,
@@ -234,4 +283,11 @@ enum Face {
     Line([VertexIndices; 2]),
     Triangle([VertexIndices; 3]),
     Quad([VertexIndices; 4]),
+}
+
+pub enum ObjLoadError {
+    InvalidPositionValue,
+    InvalidTextureCoordValue,
+    InvalidNormalValue,
+    InvalidFaceValue,
 }
