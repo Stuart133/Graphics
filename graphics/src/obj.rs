@@ -1,8 +1,11 @@
 //! A simple .obj model loading module
 
-use std::{collections::HashMap, str::{Split, FromStr}};
+use std::{
+    collections::HashMap,
+    str::{FromStr, Split},
+};
 
-use crate::model::{Material, Mesh, ModelVertex, MaterialIllumination};
+use crate::model::{Material, MaterialIllumination, Mesh, ModelVertex};
 
 pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
     let mut loader = MeshLoader::default();
@@ -38,70 +41,84 @@ pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
 
 struct ModelLoader {
     meshes: Vec<Mesh>,
-    materials: Vec<Material>,
+    materials: HashMap<String, Material>,
 }
 
 fn load_mtl(raw_mtl: &str) -> Result<Vec<Material>, ()> {
-    let mut materials = vec!();
+    let mut materials = vec![];
+
+    let mut prev = 0;
+    let lines: Vec<&str> = raw_mtl.lines().collect();
+    for i in 0..lines.len() {
+        if lines[i].starts_with("newmtl") {
+            if prev == 0 {
+                // First mtl encountered
+                prev = i;
+            } else {
+                match load_material(&lines[prev..i]) {
+                    Ok(mat) => materials.push(mat),
+                    Err(_) => return Err(()),
+                }
+                prev = i;
+            }
+        }
+    }
+
+    // Load final mtl
+    match load_material(&lines[prev..]) {
+        Ok(mat) => materials.push(mat),
+        Err(_) => return Err(()),
+    }
+
+    Ok(materials)
+}
+
+fn load_material(lines: &[&str]) -> Result<Material, ()> {
     let mut material = Material::default();
 
-    for line in raw_mtl.lines() {
+    for line in lines.into_iter() {
         let mut elements = line.split(" ");
         match elements.next() {
             Some(key) => match key {
-                "Ns" => {
-                    match load_num(elements.next()) {
-                        Ok(f) => material.specular_exponent = f,
-                        Err(_) => todo!(),
-                    }
+                "Ns" => match load_num(elements.next()) {
+                    Ok(f) => material.specular_exponent = f,
+                    Err(_) => todo!(),
                 },
                 "Ka" => material.ambient_color = load_n_float::<3>(&mut elements),
                 "Kd" => material.diffuse_color = load_n_float::<3>(&mut elements),
                 "Ks" => material.specular_color = load_n_float::<3>(&mut elements),
                 "Ke" => material.emissive_color = load_n_float::<3>(&mut elements),
-                "Ni" => {
-                    match load_num(elements.next()) {
-                        Ok(f) => material.optical_density = f,
-                        Err(_) => return Err(()),
-                    }
+                "Ni" => match load_num(elements.next()) {
+                    Ok(f) => material.optical_density = f,
+                    Err(_) => return Err(()),
                 },
-                "d" => {
-                    match load_num(elements.next()) {
-                        Ok(f) => material.opacity = f,
-                        Err(_) => return Err(()),
-                    }
+                "d" => match load_num(elements.next()) {
+                    Ok(f) => material.opacity = f,
+                    Err(_) => return Err(()),
                 },
-                "Tr" => {
-                    match load_num::<f32>(elements.next()) {
-                        Ok(f) => material.opacity = 1.0 - f,
-                        Err(_) => return Err(()),
-                    }
+                "Tr" => match load_num::<f32>(elements.next()) {
+                    Ok(f) => material.opacity = 1.0 - f,
+                    Err(_) => return Err(()),
                 },
-                "illum" => {
-                    match load_num::<u32>(elements.next()) {
-                        Ok(i) => material.illumination_mode = load_illumination_mode(i),
-                        Err(_) => return Err(()),
-                    }
+                "illum" => match load_num::<u32>(elements.next()) {
+                    Ok(i) => material.illumination_mode = load_illumination_mode(i),
+                    Err(_) => return Err(()),
                 },
-                "map_Bump" => {
-                    match elements.next() {
-                        Some(file) => material.bump_map_file = file.to_string(),
-                        None => return Err(()),
-                    }
-                }
-                "map_Kd" => {
-                    match elements.next() {
-                        Some(file) => material.diffuse_texture_file = file.to_string(),
-                        None => return Err(()),
-                    }
-                }
+                "map_Bump" => match elements.next() {
+                    Some(file) => material.bump_map_file = file.to_string(),
+                    None => return Err(()),
+                },
+                "map_Kd" => match elements.next() {
+                    Some(file) => material.diffuse_texture_file = file.to_string(),
+                    None => return Err(()),
+                },
                 _ => {} // Just ignore any unrecognised key
             },
             None => {}
         }
     }
 
-    Ok(materials)
+    Ok(material)
 }
 
 fn load_num<T: FromStr>(raw_num: Option<&str>) -> Result<T, ()> {
@@ -132,20 +149,20 @@ fn load_n_float<const N: usize>(raw_n_float: &mut Split<&str>) -> [f32; N] {
 }
 
 fn load_illumination_mode(mode: u32) -> Option<MaterialIllumination> {
- match mode {
-    0 => Some(MaterialIllumination::ColorAmbientOff),
-    1 => Some(MaterialIllumination::ColorAmbientOn),
-    2 => Some(MaterialIllumination::Highlight),
-    3 => Some(MaterialIllumination::ReflectionRayTrace),
-    4 => Some(MaterialIllumination::TransparencyGlassRayTrace),
-    5 => Some(MaterialIllumination::ReflectionFresnelRayTrace),
-    6 => Some(MaterialIllumination::TransparencyRefractionRayTrace),
-    7 => Some(MaterialIllumination::TransparencyFresnelRayTrace),
-    8 => Some(MaterialIllumination::Reflection),
-    9 => Some(MaterialIllumination::TransparencyGlass),
-    10 => Some(MaterialIllumination::CastShadows),
-    _ => None,
- }
+    match mode {
+        0 => Some(MaterialIllumination::ColorAmbientOff),
+        1 => Some(MaterialIllumination::ColorAmbientOn),
+        2 => Some(MaterialIllumination::Highlight),
+        3 => Some(MaterialIllumination::ReflectionRayTrace),
+        4 => Some(MaterialIllumination::TransparencyGlassRayTrace),
+        5 => Some(MaterialIllumination::ReflectionFresnelRayTrace),
+        6 => Some(MaterialIllumination::TransparencyRefractionRayTrace),
+        7 => Some(MaterialIllumination::TransparencyFresnelRayTrace),
+        8 => Some(MaterialIllumination::Reflection),
+        9 => Some(MaterialIllumination::TransparencyGlass),
+        10 => Some(MaterialIllumination::CastShadows),
+        _ => None,
+    }
 }
 
 #[derive(Default)]

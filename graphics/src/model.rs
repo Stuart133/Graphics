@@ -75,9 +75,6 @@ pub struct Mesh {
 /// This is not necessarily in a form ready for consumption by the GPU
 #[derive(Debug, Default)]
 pub struct Material {
-    /// Name of the material
-    pub name: String,
-
     /// Specular exponent of the material, controlling object glossiness
     pub specular_exponent: f32,
 
