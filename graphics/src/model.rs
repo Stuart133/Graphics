@@ -1,4 +1,3 @@
-use cgmath::Vector3;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     *,
@@ -117,7 +116,7 @@ pub struct Material {
 #[derive(Debug)]
 pub enum MaterialIllumination {
     ColorAmbientOff = 0,
-    ColorAmbiantOn = 1,
+    ColorAmbientOn = 1,
     Highlight = 2,
     ReflectionRayTrace = 3,
     TransparencyGlassRayTrace = 4,
@@ -137,7 +136,7 @@ pub enum ModelLoadError {
 
 #[derive(Debug)]
 pub struct Model<'a> {
-    pub meshes: Vec<GpuMesh>, // TODO: Probably move vertex/index buffer to here
+    pub meshes: Vec<GpuMesh>,
     pub label: Option<&'a str>,
 }
 

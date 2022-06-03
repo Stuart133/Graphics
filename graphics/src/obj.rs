@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, str::{Split, FromStr}};
 
-use crate::model::{Material, Mesh, ModelVertex};
+use crate::model::{Material, Mesh, ModelVertex, MaterialIllumination};
 
 pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
     let mut loader = MeshLoader::default();
@@ -41,50 +41,79 @@ struct ModelLoader {
     materials: Vec<Material>,
 }
 
-fn load_mtl(raw_mtl: &str) -> Material {
+fn load_mtl(raw_mtl: &str) -> Result<Vec<Material>, ()> {
+    let mut materials = vec!();
     let mut material = Material::default();
 
     for line in raw_mtl.lines() {
         let mut elements = line.split(" ");
         match elements.next() {
             Some(key) => match key {
-                "Ns" => material.specular_exponent = load_float(elements.next()),
+                "Ns" => {
+                    match load_num(elements.next()) {
+                        Ok(f) => material.specular_exponent = f,
+                        Err(_) => todo!(),
+                    }
+                },
                 "Ka" => material.ambient_color = load_n_float::<3>(&mut elements),
                 "Kd" => material.diffuse_color = load_n_float::<3>(&mut elements),
                 "Ks" => material.specular_color = load_n_float::<3>(&mut elements),
                 "Ke" => material.emissive_color = load_n_float::<3>(&mut elements),
-                "Ni" => material.optical_density = load_float(elements.next()),
-                "d" => material.opacity = load_float(elements.next()),
-                "Tr" => material.opacity = 1.0 - load_float(elements.next()),  // Transparency is the inverse of opacity
-                // "Tr" => material.illumination_mode = load_num::<u32>(elements.next()),  // Transparency is the inverse of opacity
+                "Ni" => {
+                    match load_num(elements.next()) {
+                        Ok(f) => material.optical_density = f,
+                        Err(_) => return Err(()),
+                    }
+                },
+                "d" => {
+                    match load_num(elements.next()) {
+                        Ok(f) => material.opacity = f,
+                        Err(_) => return Err(()),
+                    }
+                },
+                "Tr" => {
+                    match load_num::<f32>(elements.next()) {
+                        Ok(f) => material.opacity = 1.0 - f,
+                        Err(_) => return Err(()),
+                    }
+                },
+                "illum" => {
+                    match load_num::<u32>(elements.next()) {
+                        Ok(i) => material.illumination_mode = load_illumination_mode(i),
+                        Err(_) => return Err(()),
+                    }
+                },
+                "map_Bump" => {
+                    match elements.next() {
+                        Some(file) => material.bump_map_file = file.to_string(),
+                        None => return Err(()),
+                    }
+                }
+                "map_Kd" => {
+                    match elements.next() {
+                        Some(file) => material.diffuse_texture_file = file.to_string(),
+                        None => return Err(()),
+                    }
+                }
                 _ => {} // Just ignore any unrecognised key
             },
             None => {}
         }
     }
 
-    material
+    Ok(materials)
 }
 
 fn load_num<T: FromStr>(raw_num: Option<&str>) -> Result<T, ()> {
     match raw_num {
-        Some(raw_float) => {
-            let float = raw_float.parse::<T>();
-            match float {
-                Ok(float) => Ok(float),
+        Some(raw_num) => {
+            let num = raw_num.parse::<T>();
+            match num {
+                Ok(num) => Ok(num),
                 Err(_) => Err(()),
             }
         }
         None => Err(()),
-    }
-}
-
-fn load_float(raw_float: Option<&str>) -> f32 {
-    match raw_float {
-        Some(raw_float) => {
-            raw_float.parse::<f32>().unwrap() // TODO: Handle the result here
-        }
-        None => todo!(), // TODO: This should be a result
     }
 }
 
@@ -100,6 +129,23 @@ fn load_n_float<const N: usize>(raw_n_float: &mut Split<&str>) -> [f32; N] {
     }
 
     n_float
+}
+
+fn load_illumination_mode(mode: u32) -> Option<MaterialIllumination> {
+ match mode {
+    0 => Some(MaterialIllumination::ColorAmbientOff),
+    1 => Some(MaterialIllumination::ColorAmbientOn),
+    2 => Some(MaterialIllumination::Highlight),
+    3 => Some(MaterialIllumination::ReflectionRayTrace),
+    4 => Some(MaterialIllumination::TransparencyGlassRayTrace),
+    5 => Some(MaterialIllumination::ReflectionFresnelRayTrace),
+    6 => Some(MaterialIllumination::TransparencyRefractionRayTrace),
+    7 => Some(MaterialIllumination::TransparencyFresnelRayTrace),
+    8 => Some(MaterialIllumination::Reflection),
+    9 => Some(MaterialIllumination::TransparencyGlass),
+    10 => Some(MaterialIllumination::CastShadows),
+    _ => None,
+ }
 }
 
 #[derive(Default)]
