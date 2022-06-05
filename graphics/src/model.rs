@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     *,
@@ -73,7 +75,7 @@ pub struct Mesh {
 /// A generalized material to be applied to a mesh
 ///
 /// This is not necessarily in a form ready for consumption by the GPU
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Material {
     /// Specular exponent of the material, controlling object glossiness
     pub specular_exponent: f32,
@@ -110,7 +112,7 @@ pub struct Material {
 ///
 /// See https://en.wikipedia.org/wiki/Wavefront_.obj_file#Reference_materials
 /// for more details
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MaterialIllumination {
     ColorAmbientOff = 0,
     ColorAmbientOn = 1,
@@ -168,11 +170,11 @@ impl GpuMesh {
 
 impl<'a> Model<'a> {
     pub fn from_str(
-        raw_model: &str,
+        model: &Path,
         device: &Device,
         label: Option<&'a str>,
     ) -> Result<Model<'a>, ModelLoadError> {
-        match crate::obj::from_str(raw_model) {
+        match crate::obj::load_model(model) {
             Ok(mesh) => Ok(Model {
                 meshes: vec![GpuMesh::from_mesh(mesh, device)],
                 label,

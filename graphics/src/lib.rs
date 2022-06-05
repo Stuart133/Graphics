@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use camera::*;
 use cgmath::*;
 use model::{Model, ModelVertex, Vertex};
@@ -208,8 +210,7 @@ impl<'a> State<'a> {
             multiview: None,
         });
 
-        let obj = include_str!("../data/torus.obj");
-        let model = Model::from_str(obj, &device, Some("model")).unwrap();
+        let model = Model::from_str(Path::new("../data/torus.obj"), &device, Some("model")).unwrap();
 
         Self {
             surface,

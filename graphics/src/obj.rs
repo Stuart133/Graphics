@@ -2,46 +2,80 @@
 
 use std::{
     collections::HashMap,
+    path::Path,
     str::{FromStr, Split},
 };
 
 use crate::model::{Material, MaterialIllumination, Mesh, ModelVertex};
 
-pub fn from_str(raw_mesh: &str) -> Result<Mesh, ObjLoadError> {
-    let mut loader = MeshLoader::default();
+pub fn load_model(file: &Path) -> Result<Mesh, ObjLoadError> {
+    let raw_model = match std::fs::read_to_string(file) {
+        Ok(str) => str,
+        Err(err) => return Err(ObjLoadError::FileLoadError(err)),
+    };
 
-    for line in raw_mesh.lines() {
+    let mut loader = ModelLoader::default();
+
+    for line in raw_model.lines() {
         let mut elements = line.split(" ");
         match elements.next() {
             Some(key) => match key {
-                "v" => match loader.load_vertex(elements) {
-                    Ok(_) => {}
-                    Err(err) => return Err(err),
-                },
-                "vt" => match loader.load_texture_coord(elements) {
-                    Ok(_) => {}
-                    Err(err) => return Err(err),
-                },
-                "vn" => match loader.load_normal(elements) {
-                    Ok(_) => {}
-                    Err(err) => return Err(err),
-                },
-                "f" => match loader.load_face(elements) {
-                    Ok(_) => {}
-                    Err(err) => return Err(err),
-                },
-                _ => {} // Just ignore any unrecognised key
+                "mtllib" => {}
+                _ => {} // Skip any unexpected keys
             },
-            None => {}
+            None => todo!(),
         }
     }
 
-    Ok(loader.export_faces())
+    ()
 }
 
+#[derive(Default)]
 struct ModelLoader {
     meshes: Vec<Mesh>,
     materials: HashMap<String, Material>,
+}
+
+impl ModelLoader {
+    fn load_mesh(&mut self, raw_mesh: &str) -> Option<ObjLoadError> {
+        let mut loader = MeshLoader::default();
+
+        for line in raw_mesh.lines() {
+            let mut elements = line.split(" ");
+            match elements.next() {
+                Some(key) => match key {
+                    "v" => match loader.load_vertex(elements) {
+                        Ok(_) => {}
+                        Err(err) => return Some(err),
+                    },
+                    "vt" => match loader.load_texture_coord(elements) {
+                        Ok(_) => {}
+                        Err(err) => return Some(err),
+                    },
+                    "vn" => match loader.load_normal(elements) {
+                        Ok(_) => {}
+                        Err(err) => return Some(err),
+                    },
+                    "f" => match loader.load_face(elements) {
+                        Ok(_) => {}
+                        Err(err) => return Some(err),
+                    },
+                    "usemtl" => match elements.next() {
+                        Some(mtl_name) => match self.materials.get(mtl_name) {
+                            Some(mat) => loader.material = Some(mat.clone()),
+                            None => return Some(ObjLoadError::InvalidMaterialName),
+                        },
+                        None => return Some(ObjLoadError::InvalidMaterialName),
+                    },
+                    _ => {} // Just ignore any unrecognised key
+                },
+                None => {}
+            }
+        }
+
+        self.meshes.push(loader.export_mesh());
+        None
+    }
 }
 
 fn load_mtl(raw_mtl: &str) -> Result<Vec<Material>, ()> {
@@ -84,10 +118,10 @@ fn load_material(lines: &[&str]) -> Result<Material, ()> {
                     Ok(f) => material.specular_exponent = f,
                     Err(_) => todo!(),
                 },
-                "Ka" => material.ambient_color = load_n_float::<3>(&mut elements),
-                "Kd" => material.diffuse_color = load_n_float::<3>(&mut elements),
-                "Ks" => material.specular_color = load_n_float::<3>(&mut elements),
-                "Ke" => material.emissive_color = load_n_float::<3>(&mut elements),
+                "Ka" => material.ambient_color = load_n_float::<3>(elements),
+                "Kd" => material.diffuse_color = load_n_float::<3>(elements),
+                "Ks" => material.specular_color = load_n_float::<3>(elements),
+                "Ke" => material.emissive_color = load_n_float::<3>(elements),
                 "Ni" => match load_num(elements.next()) {
                     Ok(f) => material.optical_density = f,
                     Err(_) => return Err(()),
@@ -134,7 +168,7 @@ fn load_num<T: FromStr>(raw_num: Option<&str>) -> Result<T, ()> {
     }
 }
 
-fn load_n_float<const N: usize>(raw_n_float: &mut Split<&str>) -> [f32; N] {
+fn load_n_float<const N: usize>(raw_n_float: Split<&str>) -> [f32; N] {
     let mut n_float = [0.0; N];
 
     for i in 0..N {
@@ -171,16 +205,19 @@ struct MeshLoader {
     positions: Vec<[f32; 3]>,
     texture_coords: Vec<[f32; 2]>,
     normals: Vec<[f32; 3]>,
+    material: Option<Material>,
 }
 
 impl MeshLoader {
-    fn export_faces(&self) -> Mesh {
+    fn export_mesh(&self) -> Mesh {
         let mut mesh = Mesh::default();
         let mut vertex_map = Default::default();
 
         for face in self.faces.iter() {
             self.export_face(face, &mut mesh, &mut vertex_map);
         }
+
+        mesh.material = self.material;
 
         mesh
     }
@@ -279,8 +316,11 @@ impl MeshLoader {
         Ok(())
     }
 
+    // TODO - Use load N float in these methods
     fn load_vertex(&mut self, raw_vertices: Split<&str>) -> Result<(), ObjLoadError> {
         let mut vertex = [0.0; 3];
+
+        let l = load_n_float::<3>(raw_vertices);
 
         for (i, elem) in raw_vertices.enumerate() {
             match elem.parse::<f32>() {
@@ -293,6 +333,7 @@ impl MeshLoader {
         Ok(())
     }
 
+    // TODO - Use load N float in these methods
     fn load_texture_coord(&mut self, raw_coord: Split<&str>) -> Result<(), ObjLoadError> {
         let mut texture_coord = [0.0; 2];
 
@@ -308,6 +349,7 @@ impl MeshLoader {
         Ok(())
     }
 
+    // TODO - Use load N float in these methods
     fn load_normal(&mut self, raw_normal: Split<&str>) -> Result<(), ObjLoadError> {
         let mut normal = [0.0; 3];
 
@@ -349,8 +391,11 @@ enum Face {
 }
 
 pub enum ObjLoadError {
+    FileLoadError(std::io::Error),
     InvalidPositionValue,
     InvalidTextureCoordValue,
     InvalidNormalValue,
     InvalidFaceValue,
+    InvalidMaterialName,
+    InvalidMaterialLib,
 }
