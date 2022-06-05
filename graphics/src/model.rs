@@ -11,6 +11,7 @@ pub trait Vertex {
     fn desc<'a>() -> VertexBufferLayout<'a>;
 }
 
+/// 3D Model Vertex
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ModelVertex {
@@ -55,7 +56,17 @@ impl Vertex for ModelVertex {
     }
 }
 
-/// A generalized mesh represting a portion of a 3d model
+/// A generalized 3D model
+///
+/// This is not necessarily in a form ready for consumption by the GPU
+/// but is a more direct representation of the original mesh data
+#[derive(Debug, Default)]
+pub struct Model {
+    pub meshes: Vec<Mesh>,
+    pub materials: Vec<Material>,
+}
+
+/// A generalized mesh represting a portion of a 3D model
 ///
 /// This is not necessarily in a form ready for consumption by the GPU
 /// but is a more direct representation of the original mesh data
@@ -70,8 +81,8 @@ pub struct Mesh {
     /// Vector of vertex indices
     pub indices: Vec<u32>,
 
-    /// Material to apply to mesh
-    pub material: Option<Material>,
+    /// Index of material in model material vector
+    pub material: usize,
 }
 
 /// A generalized material to be applied to a mesh
@@ -136,8 +147,9 @@ pub enum ModelLoadError {
 }
 
 #[derive(Debug)]
-pub struct Model<'a> {
+pub struct GpuModel<'a> {
     pub meshes: Vec<GpuMesh>,
+    pub materials: Vec<GpuMaterial>,
     pub label: Option<&'a str>,
 }
 
@@ -147,11 +159,11 @@ pub struct GpuMesh {
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub vertex_count: u32,
-    pub diffuse_bind_group: Option<BindGroup>,
+    pub material: usize,
 }
 
 impl GpuMesh {
-    fn from_mesh(mesh: Mesh, queue: &Queue, dir: &Path, device: &Device, layout: &BindGroupLayout,) -> Self {
+    fn from_mesh(mesh: Mesh, device: &Device) -> Self {
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some(&format!("Vertex Buffer")),
             contents: bytemuck::cast_slice(&mesh.vertices),
@@ -163,52 +175,92 @@ impl GpuMesh {
             usage: BufferUsages::INDEX,
         });
 
-        let bind_group = if let Some(material) = mesh.material {
-            // TODO - Handle the error properly
-            let diffuse_texture = texture::Texture::from_file(device, queue, dir.join(material.diffuse_texture_file).as_path(), "yeah").unwrap();
-            Some(device.create_bind_group(&BindGroupDescriptor {
-                layout: layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: BindingResource::TextureView(&diffuse_texture.view),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: BindingResource::Sampler(&diffuse_texture.sampler),
-                    },
-                ],
-                label: Some("diffuse_bind_group"),
-            }))
-        } else {
-            None
-        };
-
         GpuMesh {
             vertex_buffer,
             index_buffer,
             vertex_count: mesh.indices.len() as u32, // TODO: Cast more sensibly
+            material: mesh.material,
+        }
+    }
+}
+
+/// Material representation for sending to the GPU
+#[derive(Debug)]
+pub struct GpuMaterial {
+    pub diffuse_bind_group: BindGroup,
+}
+
+impl GpuMaterial {
+    fn from_material(
+        material: Material,
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        dir: &Path,
+    ) -> GpuMaterial {
+        // TODO - Handle the error properly
+        let diffuse_texture = texture::Texture::from_file(
+            device,
+            queue,
+            dir.join(material.diffuse_texture_file).as_path(),
+            "yeah",
+        )
+        .unwrap();
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&diffuse_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group"),
+        });
+
+        GpuMaterial {
             diffuse_bind_group: bind_group,
         }
     }
 }
 
-impl<'a> Model<'a> {
-    pub fn from_str(
-        model: &Path,
+impl<'a> GpuModel<'a> {
+    pub fn from_file(
+        model_path: &Path,
         device: &Device,
         queue: &Queue,
         layout: &BindGroupLayout,
         label: Option<&'a str>,
-    ) -> Result<Model<'a>, ModelLoadError> {
-        match crate::obj::load_model(model) {
-            Ok(meshes) => Ok(Model {
-                meshes: meshes
-                    .into_iter()
-                    .map(|mesh| GpuMesh::from_mesh(mesh, queue, &model.parent().unwrap(), device, layout))
-                    .collect(),
-                label,
-            }),
+    ) -> Result<GpuModel<'a>, ModelLoadError> {
+        match crate::obj::load_model(model_path) {
+            Ok(model) => {
+                let gpu_model = GpuModel {
+                    meshes: model
+                        .meshes
+                        .into_iter()
+                        .map(|mesh| GpuMesh::from_mesh(mesh, device))
+                        .collect(),
+                    materials: model
+                        .materials
+                        .into_iter()
+                        .map(|material| {
+                            GpuMaterial::from_material(
+                                material,
+                                device,
+                                queue,
+                                layout,
+                                &model_path.parent().unwrap(),
+                            )
+                        })
+                        .collect(),
+                    label,
+                };
+
+                Ok(gpu_model)
+            }
             Err(_) => Err(ModelLoadError::InvalidModel),
         }
     }

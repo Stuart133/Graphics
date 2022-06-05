@@ -6,9 +6,9 @@ use std::{
     str::{FromStr, Split},
 };
 
-use crate::model::{Material, MaterialIllumination, Mesh, ModelVertex};
+use crate::model::{Material, MaterialIllumination, Mesh, Model, ModelVertex};
 
-pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
+pub fn load_model(file: &Path) -> Result<Model, ObjLoadError> {
     let raw_model = match std::fs::read_to_string(file) {
         Ok(str) => str,
         Err(err) => return Err(ObjLoadError::FileLoadError(err)),
@@ -63,13 +63,17 @@ pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
         None => {}
     }
 
-    Ok(loader.meshes)
+    Ok(Model {
+        meshes: loader.meshes,
+        materials: loader.materials,
+    })
 }
 
 #[derive(Default)]
 struct ModelLoader {
     meshes: Vec<Mesh>,
-    materials: HashMap<String, Material>, // TODO: Think about returning this directly to model layer
+    materials: Vec<Material>,
+    material_map: HashMap<String, usize>,
     positions: Vec<[f32; 3]>,
     texture_coords: Vec<[f32; 2]>,
     normals: Vec<[f32; 3]>,
@@ -208,7 +212,11 @@ impl ModelLoader {
             self.export_face(face, &mut mesh, &mut vertex_map);
         }
 
-        mesh.material = Some(self.materials.get(&self.current_material).unwrap().clone());
+        mesh.material = self
+            .material_map
+            .get(&self.current_material)
+            .unwrap()
+            .to_owned();
 
         mesh
     }
@@ -286,7 +294,7 @@ impl ModelLoader {
                                 prev = i;
                             } else {
                                 match load_material(&lines[prev..i]) {
-                                    Ok(mat) => self.materials.insert(current_material_name, mat),
+                                    Ok(mat) => self.push_material(mat, current_material_name),
                                     Err(_) => return Some(ObjLoadError::InvalidMaterialLib),
                                 };
                                 prev = i;
@@ -302,11 +310,17 @@ impl ModelLoader {
 
         // Load final mtl
         match load_material(&lines[prev..]) {
-            Ok(mat) => self.materials.insert(current_material_name, mat),
+            Ok(mat) => self.push_material(mat, current_material_name),
             Err(_) => return Some(ObjLoadError::InvalidMaterialLib),
         };
 
         None
+    }
+
+    fn push_material(&mut self, material: Material, material_name: String) {
+        self.material_map
+            .insert(material_name, self.materials.len());
+        self.materials.push(material);
     }
 }
 

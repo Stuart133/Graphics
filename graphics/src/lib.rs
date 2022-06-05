@@ -2,7 +2,7 @@ use std::path::Path;
 
 use camera::*;
 use cgmath::*;
-use model::{Model, ModelVertex, Vertex};
+use model::{GpuModel, ModelVertex, Vertex};
 use wgpu::util::*;
 use wgpu::*;
 use winit::{
@@ -46,7 +46,7 @@ struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    model: Model<'a>,
+    model: GpuModel<'a>,
 }
 
 impl<'a> State<'a> {
@@ -191,7 +191,14 @@ impl<'a> State<'a> {
             multiview: None,
         });
 
-        let model = Model::from_str(Path::new("data/cube.obj"), &device, &queue, &texture_bind_group_layout, Some("model")).unwrap();
+        let model = GpuModel::from_file(
+            Path::new("data/cube.obj"),
+            &device,
+            &queue,
+            &texture_bind_group_layout,
+            Some("model"),
+        )
+        .unwrap();
 
         Self {
             surface,
@@ -268,7 +275,11 @@ impl<'a> State<'a> {
             for mesh in self.model.meshes.iter() {
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);
-                render_pass.set_bind_group(0, mesh.diffuse_bind_group.as_ref().unwrap(), &[]);
+                render_pass.set_bind_group(
+                    0,
+                    &self.model.materials[mesh.material].diffuse_bind_group,
+                    &[],
+                );
                 render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);
             }
         }
