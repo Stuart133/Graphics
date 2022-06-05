@@ -45,10 +45,13 @@ pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
                         match loader.load_mesh(&lines[prev..i]) {
                             Some(err) => return Err(err),
                             None => {},
-                        }
+                        };
+                        prev = i;
+                        loader.current_material = String::default();
+                        loader.current_faces.clear();
                     }
-                }
-                _ => {} // Skip any unexpected keys
+                },
+                _ => {} // Just ignore any unrecognised key
             },
             None => todo!(),
         }
@@ -66,38 +69,38 @@ pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
 #[derive(Default)]
 struct ModelLoader {
     meshes: Vec<Mesh>,
-    materials: HashMap<String, Material>,
+    materials: HashMap<String, Material>,   // TODO: Think about returning this directly to model layer
+    positions: Vec<[f32; 3]>,
+    texture_coords: Vec<[f32; 2]>,
+    normals: Vec<[f32; 3]>,
+    current_faces: Vec<Face>,
+    current_material: String,
 }
 
 impl ModelLoader {
     fn load_mesh(&mut self, raw_mesh: &[&str]) -> Option<ObjLoadError> {
-        let mut loader = MeshLoader::default();
-
         for line in raw_mesh.iter() {
             let mut elements = line.split(" ");
             match elements.next() {
                 Some(key) => match key {
-                    "v" => match loader.load_vertex(elements) {
+                    "v" => match self.load_vertex(elements) {
                         Ok(_) => {}
                         Err(err) => return Some(err),
                     },
-                    "vt" => match loader.load_texture_coord(elements) {
+                    "vt" => match self.load_texture_coord(elements) {
                         Ok(_) => {}
                         Err(err) => return Some(err),
                     },
-                    "vn" => match loader.load_normal(elements) {
+                    "vn" => match self.load_normal(elements) {
                         Ok(_) => {}
                         Err(err) => return Some(err),
                     },
-                    "f" => match loader.load_face(elements) {
+                    "f" => match self.load_face(elements) {
                         Ok(_) => {}
                         Err(err) => return Some(err),
                     },
                     "usemtl" => match elements.next() {
-                        Some(mtl_name) => match self.materials.get(mtl_name) {
-                            Some(mat) => loader.material = Some(mat.clone()),
-                            None => return Some(ObjLoadError::InvalidMaterialName),
-                        },
+                        Some(mtl_name) => self.current_material = mtl_name.to_string(),
                         None => return Some(ObjLoadError::InvalidMaterialName),
                     },
                     _ => {} // Just ignore any unrecognised key
@@ -106,10 +109,164 @@ impl ModelLoader {
             }
         }
 
-        self.meshes.push(loader.export_mesh());
+        self.meshes.push(self.export_mesh());
         None
     }
 
+    fn load_face(&mut self, raw_face: Split<&str>) -> Result<(), ObjLoadError> {
+        let mut face = vec![];
+
+        for group in raw_face {
+            let mut indices = VertexIndices::default();
+            for (i, index) in group.split("/").enumerate() {
+                // Value could be missing - If it is skip to next value
+                if index == "" {
+                    continue;
+                }
+
+                match index.parse::<usize>() {
+                    Ok(index) => match i {
+                        // OBJ indices are 1 based, adjust to 0 based
+                        0 => indices.position = index - 1,
+                        1 => indices.texture_coord = index - 1,
+                        2 => indices.normal = index - 1,
+                        _ => return Err(ObjLoadError::InvalidFaceValue),
+                    },
+                    Err(_) => return Err(ObjLoadError::InvalidFaceValue),
+                }
+            }
+
+            face.push(indices);
+        }
+
+        match face.len() {
+            1 => self.current_faces.push(Face::Point([face[0]])),
+            2 => self.current_faces.push(Face::Line([face[0], face[1]])),
+            3 => self.current_faces.push(Face::Triangle([face[0], face[1], face[2]])),
+            4 => self
+                .current_faces
+                .push(Face::Quad([face[0], face[1], face[2], face[3]])),
+            _ => return Err(ObjLoadError::InvalidFaceValue),
+        }
+
+        Ok(())
+    }
+
+    // TODO - Use load N float in these methods
+    fn load_vertex(&mut self, raw_vertices: Split<&str>) -> Result<(), ObjLoadError> {
+        let mut vertex = [0.0; 3];
+
+        for (i, elem) in raw_vertices.enumerate() {
+            match elem.parse::<f32>() {
+                Ok(val) => vertex[i] = val,
+                Err(_) => return Err(ObjLoadError::InvalidPositionValue),
+            }
+        }
+        self.positions.push(vertex);
+
+        Ok(())
+    }
+
+    // TODO - Use load N float in these methods
+    fn load_texture_coord(&mut self, raw_coord: Split<&str>) -> Result<(), ObjLoadError> {
+        let mut texture_coord = [0.0; 2];
+
+        for (i, elem) in raw_coord.enumerate() {
+            match elem.parse::<f32>() {
+                Ok(val) => texture_coord[i] = val,
+                Err(_) => return Err(ObjLoadError::InvalidTextureCoordValue),
+            }
+        }
+
+        self.texture_coords.push(texture_coord);
+
+        Ok(())
+    }
+
+    // TODO - Use load N float in these methods
+    fn load_normal(&mut self, raw_normal: Split<&str>) -> Result<(), ObjLoadError> {
+        let mut normal = [0.0; 3];
+
+        for (i, elem) in raw_normal.enumerate() {
+            match elem.parse::<f32>() {
+                Ok(val) => normal[i] = val,
+                Err(_) => return Err(ObjLoadError::InvalidNormalValue),
+            }
+        }
+        self.normals.push(normal);
+
+        Ok(())
+    }
+
+    fn export_mesh(&self) -> Mesh {
+        let mut mesh = Mesh::default();
+        let mut vertex_map = Default::default();
+
+        for face in self.current_faces.iter() {
+            self.export_face(face, &mut mesh, &mut vertex_map);
+        }
+
+        // mesh.material = self.material.clone();
+
+        mesh
+    }
+
+    fn export_face(
+        &self,
+        face: &Face,
+        mesh: &mut Mesh,
+        vertex_map: &mut HashMap<VertexIndices, usize>,
+    ) {
+        match face {
+            // Ignore points
+            Face::Point(_) => {}
+            // Ignore lines
+            Face::Line(_) => {}
+            Face::Triangle(vertex_indices) => {
+                for vi in vertex_indices {
+                    self.export_vertex(vi, mesh, vertex_map);
+                }
+            }
+            Face::Quad(vertex_indices) => {
+                // Split the quad into 2 triangles - With vertices 0, 1, 2
+                for vi in &vertex_indices[0..3] {
+                    self.export_vertex(vi, mesh, vertex_map);
+                }
+
+                // & vertices 1, 2, 3
+                self.export_vertex(&vertex_indices[0], mesh, vertex_map);
+                self.export_vertex(&vertex_indices[2], mesh, vertex_map);
+                self.export_vertex(&vertex_indices[3], mesh, vertex_map);
+            }
+        }
+    }
+
+    fn export_vertex(
+        &self,
+        indices: &VertexIndices,
+        mesh: &mut Mesh,
+        vertex_map: &mut HashMap<VertexIndices, usize>,
+    ) {
+        let index = vertex_map.get(&indices);
+        match index {
+            Some(index) => mesh.indices.push(*index as u32),
+            None => {
+                let vertex = ModelVertex::new(
+                    self.positions[indices.position],
+                    self.texture_coords[indices.texture_coord],
+                    self.normals[indices.normal],
+                );
+
+                let index = mesh.vertices.len();
+                mesh.indices.push(index as u32);
+                mesh.vertices.push(vertex);
+
+                vertex_map.insert(*indices, index);
+            }
+        }
+    }
+
+    // TODO - Swap load material into the impl and this to the top level
     fn load_mtl(&mut self, raw_mtl: &str) -> Option<ObjLoadError> {
         let mut prev = 0;
         let mut current_material_name = "".to_string();
@@ -240,170 +397,6 @@ fn load_illumination_mode(mode: u32) -> Option<MaterialIllumination> {
         9 => Some(MaterialIllumination::TransparencyGlass),
         10 => Some(MaterialIllumination::CastShadows),
         _ => None,
-    }
-}
-
-#[derive(Default)]
-struct MeshLoader {
-    faces: Vec<Face>,
-    positions: Vec<[f32; 3]>,
-    texture_coords: Vec<[f32; 2]>,
-    normals: Vec<[f32; 3]>,
-    material: Option<Material>, // TODO - Probably make this a reference to only copy once
-}
-
-impl MeshLoader {
-    fn export_mesh(&self) -> Mesh {
-        let mut mesh = Mesh::default();
-        let mut vertex_map = Default::default();
-
-        for face in self.faces.iter() {
-            self.export_face(face, &mut mesh, &mut vertex_map);
-        }
-
-        mesh.material = self.material.clone();
-
-        mesh
-    }
-
-    fn export_face(
-        &self,
-        face: &Face,
-        mesh: &mut Mesh,
-        vertex_map: &mut HashMap<VertexIndices, usize>,
-    ) {
-        match face {
-            // Ignore points
-            Face::Point(_) => {}
-            // Ignore lines
-            Face::Line(_) => {}
-            Face::Triangle(vertex_indices) => {
-                for vi in vertex_indices {
-                    self.export_vertex(vi, mesh, vertex_map);
-                }
-            }
-            Face::Quad(vertex_indices) => {
-                // Split the quad into 2 triangles - With vertices 0, 1, 2
-                for vi in &vertex_indices[0..3] {
-                    self.export_vertex(vi, mesh, vertex_map);
-                }
-
-                // & vertices 1, 2, 3
-                self.export_vertex(&vertex_indices[0], mesh, vertex_map);
-                self.export_vertex(&vertex_indices[2], mesh, vertex_map);
-                self.export_vertex(&vertex_indices[3], mesh, vertex_map);
-            }
-        }
-    }
-
-    fn export_vertex(
-        &self,
-        indices: &VertexIndices,
-        mesh: &mut Mesh,
-        vertex_map: &mut HashMap<VertexIndices, usize>,
-    ) {
-        let index = vertex_map.get(&indices);
-        match index {
-            Some(index) => mesh.indices.push(*index as u32),
-            None => {
-                let vertex = ModelVertex::new(
-                    self.positions[indices.position],
-                    self.texture_coords[indices.texture_coord],
-                    self.normals[indices.normal],
-                );
-
-                let index = mesh.vertices.len();
-                mesh.indices.push(index as u32);
-                mesh.vertices.push(vertex);
-
-                vertex_map.insert(*indices, index);
-            }
-        }
-    }
-
-    fn load_face(&mut self, raw_face: Split<&str>) -> Result<(), ObjLoadError> {
-        let mut face = vec![];
-
-        for group in raw_face {
-            let mut indices = VertexIndices::default();
-            for (i, index) in group.split("/").enumerate() {
-                // Value could be missing - If it is skip to next value
-                if index == "" {
-                    continue;
-                }
-
-                match index.parse::<usize>() {
-                    Ok(index) => match i {
-                        // OBJ indices are 1 based, adjust to 0 based
-                        0 => indices.position = index - 1,
-                        1 => indices.texture_coord = index - 1,
-                        2 => indices.normal = index - 1,
-                        _ => return Err(ObjLoadError::InvalidFaceValue),
-                    },
-                    Err(_) => return Err(ObjLoadError::InvalidFaceValue),
-                }
-            }
-
-            face.push(indices);
-        }
-
-        match face.len() {
-            1 => self.faces.push(Face::Point([face[0]])),
-            2 => self.faces.push(Face::Line([face[0], face[1]])),
-            3 => self.faces.push(Face::Triangle([face[0], face[1], face[2]])),
-            4 => self
-                .faces
-                .push(Face::Quad([face[0], face[1], face[2], face[3]])),
-            _ => return Err(ObjLoadError::InvalidFaceValue),
-        }
-
-        Ok(())
-    }
-
-    // TODO - Use load N float in these methods
-    fn load_vertex(&mut self, raw_vertices: Split<&str>) -> Result<(), ObjLoadError> {
-        let mut vertex = [0.0; 3];
-
-        for (i, elem) in raw_vertices.enumerate() {
-            match elem.parse::<f32>() {
-                Ok(val) => vertex[i] = val,
-                Err(_) => return Err(ObjLoadError::InvalidPositionValue),
-            }
-        }
-        self.positions.push(vertex);
-
-        Ok(())
-    }
-
-    // TODO - Use load N float in these methods
-    fn load_texture_coord(&mut self, raw_coord: Split<&str>) -> Result<(), ObjLoadError> {
-        let mut texture_coord = [0.0; 2];
-
-        for (i, elem) in raw_coord.enumerate() {
-            match elem.parse::<f32>() {
-                Ok(val) => texture_coord[i] = val,
-                Err(_) => return Err(ObjLoadError::InvalidTextureCoordValue),
-            }
-        }
-
-        self.texture_coords.push(texture_coord);
-
-        Ok(())
-    }
-
-    // TODO - Use load N float in these methods
-    fn load_normal(&mut self, raw_normal: Split<&str>) -> Result<(), ObjLoadError> {
-        let mut normal = [0.0; 3];
-
-        for (i, elem) in raw_normal.enumerate() {
-            match elem.parse::<f32>() {
-                Ok(val) => normal[i] = val,
-                Err(_) => return Err(ObjLoadError::InvalidNormalValue),
-            }
-        }
-        self.normals.push(normal);
-
-        Ok(())
     }
 }
 

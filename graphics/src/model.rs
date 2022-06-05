@@ -159,7 +159,7 @@ impl GpuMesh {
             contents: bytemuck::cast_slice(&mesh.indices),
             usage: BufferUsages::INDEX,
         });
-
+        
         GpuMesh {
             vertex_buffer,
             index_buffer,
