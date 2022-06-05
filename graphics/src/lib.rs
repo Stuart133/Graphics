@@ -210,7 +210,8 @@ impl<'a> State<'a> {
             multiview: None,
         });
 
-        let model = Model::from_str(Path::new("../data/torus.obj"), &device, Some("model")).unwrap();
+        let model =
+            Model::from_str(Path::new("../data/torus.obj"), &device, Some("model")).unwrap();
 
         Self {
             surface,

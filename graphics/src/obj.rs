@@ -20,11 +20,27 @@ pub fn load_model(file: &Path) -> Result<Mesh, ObjLoadError> {
         let mut elements = line.split(" ");
         match elements.next() {
             Some(key) => match key {
-                "mtllib" => {}
+                "mtllib" => match elements.next() {
+                    Some(mtl_file) => {
+                        match std::fs::read_to_string(
+                            file.parent().unwrap().join(Path::new(mtl_file)),
+                        ) {
+                            Ok(raw_mtl) => {
+                                let materials = load_mtl(raw_mtl.as_str());
+                                match materials {
+                                    Ok(materials) => {}
+                                    Err(_) => todo!(),
+                                }
+                            }
+                            Err(_) => return Err(ObjLoadError::InvalidMaterialLib),
+                        }
+                    }
+                    None => return Err(ObjLoadError::InvalidMaterialLib),
+                },
                 _ => {} // Skip any unexpected keys
             },
             None => todo!(),
-        }
+        };
     }
 
     ()
@@ -76,35 +92,46 @@ impl ModelLoader {
         self.meshes.push(loader.export_mesh());
         None
     }
-}
 
-fn load_mtl(raw_mtl: &str) -> Result<Vec<Material>, ()> {
-    let mut materials = vec![];
+    fn load_mtl(&mut self, raw_mtl: &str) -> Option<ObjLoadError> {
+        let mut prev = 0;
+        let mut current_material_name = "".to_string();
 
-    let mut prev = 0;
-    let lines: Vec<&str> = raw_mtl.lines().collect();
-    for i in 0..lines.len() {
-        if lines[i].starts_with("newmtl") {
-            if prev == 0 {
-                // First mtl encountered
-                prev = i;
-            } else {
-                match load_material(&lines[prev..i]) {
-                    Ok(mat) => materials.push(mat),
-                    Err(_) => return Err(()),
+        let lines: Vec<&str> = raw_mtl.lines().collect();
+        for i in 0..lines.len() {
+            let mut elements = lines[i].split(" ");
+            match elements.next() {
+                Some(key) => {
+                    match key {
+                        "newmtl" => {
+                            if prev == 0 {
+                                // First mtl encountered
+                                current_material_name = elements.next().unwrap().to_string();
+                                prev = i;
+                            } else {
+                                match load_material(&lines[prev..i]) {
+                                    Ok(mat) => self.materials.insert(current_material_name, mat),
+                                    Err(_) => return Some(ObjLoadError::InvalidMaterialLib),
+                                };
+                                prev = i;      
+                                current_material_name = elements.next().unwrap().to_string();    
+                            }
+                        },
+                        _ => {}
+                    };
                 }
-                prev = i;
+                None => {}
             }
         }
-    }
 
-    // Load final mtl
-    match load_material(&lines[prev..]) {
-        Ok(mat) => materials.push(mat),
-        Err(_) => return Err(()),
-    }
+        // Load final mtl
+        match load_material(&lines[prev..]) {
+            Ok(mat) => self.materials.insert(current_material_name, mat),
+            Err(_) => return Some(ObjLoadError::InvalidMaterialLib),
+        };
 
-    Ok(materials)
+        None
+    }
 }
 
 fn load_material(lines: &[&str]) -> Result<Material, ()> {
