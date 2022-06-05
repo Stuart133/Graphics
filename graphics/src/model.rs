@@ -175,8 +175,11 @@ impl<'a> Model<'a> {
         label: Option<&'a str>,
     ) -> Result<Model<'a>, ModelLoadError> {
         match crate::obj::load_model(model) {
-            Ok(mesh) => Ok(Model {
-                meshes: vec![GpuMesh::from_mesh(mesh, device)],
+            Ok(meshes) => Ok(Model {
+                meshes: meshes
+                    .into_iter()
+                    .map(|mesh| GpuMesh::from_mesh(mesh, device))
+                    .collect(),
                 label,
             }),
             Err(_) => Err(ModelLoadError::InvalidModel),

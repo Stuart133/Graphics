@@ -8,7 +8,7 @@ use std::{
 
 use crate::model::{Material, MaterialIllumination, Mesh, ModelVertex};
 
-pub fn load_model(file: &Path) -> Result<Mesh, ObjLoadError> {
+pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
     let raw_model = match std::fs::read_to_string(file) {
         Ok(str) => str,
         Err(err) => return Err(ObjLoadError::FileLoadError(err)),
@@ -16,8 +16,11 @@ pub fn load_model(file: &Path) -> Result<Mesh, ObjLoadError> {
 
     let mut loader = ModelLoader::default();
 
-    for line in raw_model.lines() {
-        let mut elements = line.split(" ");
+    let mut prev = 0;
+
+    let lines: Vec<&str> = raw_model.lines().collect();
+    for i in 0..lines.len() {
+        let mut elements = lines[i].split(" ");
         match elements.next() {
             Some(key) => match key {
                 "mtllib" => match elements.next() {
@@ -25,25 +28,39 @@ pub fn load_model(file: &Path) -> Result<Mesh, ObjLoadError> {
                         match std::fs::read_to_string(
                             file.parent().unwrap().join(Path::new(mtl_file)),
                         ) {
-                            Ok(raw_mtl) => {
-                                let materials = load_mtl(raw_mtl.as_str());
-                                match materials {
-                                    Ok(materials) => {}
-                                    Err(_) => todo!(),
-                                }
-                            }
+                            Ok(raw_mtl) => match loader.load_mtl(raw_mtl.as_str()) {
+                                Some(err) => return Err(err),
+                                None => {}
+                            },
                             Err(_) => return Err(ObjLoadError::InvalidMaterialLib),
                         }
                     }
                     None => return Err(ObjLoadError::InvalidMaterialLib),
                 },
+                "o" => {
+                    if prev == 0 {
+                        // First mesh encountered
+                        prev = i;
+                    } else {
+                        match loader.load_mesh(&lines[prev..i]) {
+                            Some(err) => return Err(err),
+                            None => {},
+                        }
+                    }
+                }
                 _ => {} // Skip any unexpected keys
             },
             None => todo!(),
-        };
+        }
     }
 
-    ()
+    // Load final mesh
+    match loader.load_mesh(&lines[prev..]) {
+        Some(err) => return Err(err),
+        None => {},
+    }
+
+    Ok(loader.meshes)
 }
 
 #[derive(Default)]
@@ -53,10 +70,10 @@ struct ModelLoader {
 }
 
 impl ModelLoader {
-    fn load_mesh(&mut self, raw_mesh: &str) -> Option<ObjLoadError> {
+    fn load_mesh(&mut self, raw_mesh: &[&str]) -> Option<ObjLoadError> {
         let mut loader = MeshLoader::default();
 
-        for line in raw_mesh.lines() {
+        for line in raw_mesh.iter() {
             let mut elements = line.split(" ");
             match elements.next() {
                 Some(key) => match key {
@@ -113,10 +130,10 @@ impl ModelLoader {
                                     Ok(mat) => self.materials.insert(current_material_name, mat),
                                     Err(_) => return Some(ObjLoadError::InvalidMaterialLib),
                                 };
-                                prev = i;      
-                                current_material_name = elements.next().unwrap().to_string();    
+                                prev = i;
+                                current_material_name = elements.next().unwrap().to_string();
                             }
-                        },
+                        }
                         _ => {}
                     };
                 }
@@ -134,10 +151,10 @@ impl ModelLoader {
     }
 }
 
-fn load_material(lines: &[&str]) -> Result<Material, ()> {
+fn load_material(raw_material: &[&str]) -> Result<Material, ()> {
     let mut material = Material::default();
 
-    for line in lines.into_iter() {
+    for line in raw_material.iter() {
         let mut elements = line.split(" ");
         match elements.next() {
             Some(key) => match key {
@@ -145,10 +162,10 @@ fn load_material(lines: &[&str]) -> Result<Material, ()> {
                     Ok(f) => material.specular_exponent = f,
                     Err(_) => todo!(),
                 },
-                "Ka" => material.ambient_color = load_n_float::<3>(elements),
-                "Kd" => material.diffuse_color = load_n_float::<3>(elements),
-                "Ks" => material.specular_color = load_n_float::<3>(elements),
-                "Ke" => material.emissive_color = load_n_float::<3>(elements),
+                "Ka" => material.ambient_color = load_n_float::<3>(&mut elements),
+                "Kd" => material.diffuse_color = load_n_float::<3>(&mut elements),
+                "Ks" => material.specular_color = load_n_float::<3>(&mut elements),
+                "Ke" => material.emissive_color = load_n_float::<3>(&mut elements),
                 "Ni" => match load_num(elements.next()) {
                     Ok(f) => material.optical_density = f,
                     Err(_) => return Err(()),
@@ -195,7 +212,7 @@ fn load_num<T: FromStr>(raw_num: Option<&str>) -> Result<T, ()> {
     }
 }
 
-fn load_n_float<const N: usize>(raw_n_float: Split<&str>) -> [f32; N] {
+fn load_n_float<const N: usize>(raw_n_float: &mut Split<&str>) -> [f32; N] {
     let mut n_float = [0.0; N];
 
     for i in 0..N {
@@ -232,7 +249,7 @@ struct MeshLoader {
     positions: Vec<[f32; 3]>,
     texture_coords: Vec<[f32; 2]>,
     normals: Vec<[f32; 3]>,
-    material: Option<Material>,
+    material: Option<Material>, // TODO - Probably make this a reference to only copy once
 }
 
 impl MeshLoader {
@@ -244,7 +261,7 @@ impl MeshLoader {
             self.export_face(face, &mut mesh, &mut vertex_map);
         }
 
-        mesh.material = self.material;
+        mesh.material = self.material.clone();
 
         mesh
     }
@@ -346,8 +363,6 @@ impl MeshLoader {
     // TODO - Use load N float in these methods
     fn load_vertex(&mut self, raw_vertices: Split<&str>) -> Result<(), ObjLoadError> {
         let mut vertex = [0.0; 3];
-
-        let l = load_n_float::<3>(raw_vertices);
 
         for (i, elem) in raw_vertices.enumerate() {
             match elem.parse::<f32>() {
