@@ -47,7 +47,6 @@ struct State<'a> {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     model: Model<'a>,
-    diffuse_bind_group: BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -86,10 +85,6 @@ impl<'a> State<'a> {
         };
         surface.configure(&device, &config);
 
-        let diffuse_bytes = include_bytes!("../data/cube-diffuse.jpg");
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "green").unwrap();
-
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("texture_bind_group_layout"),
@@ -112,20 +107,6 @@ impl<'a> State<'a> {
                     },
                 ],
             });
-        let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&diffuse_texture.view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-            ],
-            label: Some("diffuse_bind_group"),
-        });
 
         let camera = Camera::new(
             (0.0, 1.0, 2.0).into(),
@@ -210,8 +191,7 @@ impl<'a> State<'a> {
             multiview: None,
         });
 
-        let model =
-            Model::from_str(Path::new("data/donut.obj"), &device, Some("model")).unwrap();
+        let model = Model::from_str(Path::new("data/cube.obj"), &device, &queue, &texture_bind_group_layout, Some("model")).unwrap();
 
         Self {
             surface,
@@ -226,7 +206,6 @@ impl<'a> State<'a> {
             camera_buffer,
             camera_bind_group,
             model,
-            diffuse_bind_group,
         }
     }
 
@@ -284,12 +263,12 @@ impl<'a> State<'a> {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
             for mesh in self.model.meshes.iter() {
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);
+                render_pass.set_bind_group(0, mesh.diffuse_bind_group.as_ref().unwrap(), &[]);
                 render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);
             }
         }

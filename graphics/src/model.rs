@@ -5,6 +5,8 @@ use wgpu::{
     *,
 };
 
+use crate::texture;
+
 pub trait Vertex {
     fn desc<'a>() -> VertexBufferLayout<'a>;
 }
@@ -145,10 +147,11 @@ pub struct GpuMesh {
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub vertex_count: u32,
+    pub diffuse_bind_group: Option<BindGroup>,
 }
 
 impl GpuMesh {
-    fn from_mesh(mesh: Mesh, device: &Device) -> Self {
+    fn from_mesh(mesh: Mesh, queue: &Queue, dir: &Path, device: &Device, layout: &BindGroupLayout,) -> Self {
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some(&format!("Vertex Buffer")),
             contents: bytemuck::cast_slice(&mesh.vertices),
@@ -159,11 +162,33 @@ impl GpuMesh {
             contents: bytemuck::cast_slice(&mesh.indices),
             usage: BufferUsages::INDEX,
         });
-        
+
+        let bind_group = if let Some(material) = mesh.material {
+            // TODO - Handle the error properly
+            let diffuse_texture = texture::Texture::from_file(device, queue, dir.join(material.diffuse_texture_file).as_path(), "yeah").unwrap();
+            Some(device.create_bind_group(&BindGroupDescriptor {
+                layout: layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(&diffuse_texture.view),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::Sampler(&diffuse_texture.sampler),
+                    },
+                ],
+                label: Some("diffuse_bind_group"),
+            }))
+        } else {
+            None
+        };
+
         GpuMesh {
             vertex_buffer,
             index_buffer,
             vertex_count: mesh.indices.len() as u32, // TODO: Cast more sensibly
+            diffuse_bind_group: bind_group,
         }
     }
 }
@@ -172,13 +197,15 @@ impl<'a> Model<'a> {
     pub fn from_str(
         model: &Path,
         device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
         label: Option<&'a str>,
     ) -> Result<Model<'a>, ModelLoadError> {
         match crate::obj::load_model(model) {
             Ok(meshes) => Ok(Model {
                 meshes: meshes
                     .into_iter()
-                    .map(|mesh| GpuMesh::from_mesh(mesh, device))
+                    .map(|mesh| GpuMesh::from_mesh(mesh, queue, &model.parent().unwrap(), device, layout))
                     .collect(),
                 label,
             }),

@@ -1,4 +1,6 @@
-use anyhow::*;
+use std::path::Path;
+
+use anyhow::Result;
 use image::GenericImageView;
 use wgpu::*;
 
@@ -9,6 +11,15 @@ pub struct Texture {
 }
 
 impl Texture {
+    pub fn from_file(device: &Device, queue: &Queue, path: &Path, label: &str) -> Result<Self> {
+        let data = std::fs::read(path);
+
+        match data {
+            Ok(data) => Texture::from_bytes(device, queue, data.as_slice(), label),
+            Err(err) => return Err(anyhow::Error::new(err)),
+        }
+    }
+
     pub fn from_bytes(device: &Device, queue: &Queue, bytes: &[u8], label: &str) -> Result<Self> {
         let img = image::load_from_memory(bytes).unwrap();
 

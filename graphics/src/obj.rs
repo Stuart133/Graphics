@@ -44,13 +44,13 @@ pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
                     } else {
                         match loader.load_mesh(&lines[prev..i]) {
                             Some(err) => return Err(err),
-                            None => {},
+                            None => {}
                         };
                         prev = i;
                         loader.current_material = String::default();
                         loader.current_faces.clear();
                     }
-                },
+                }
                 _ => {} // Just ignore any unrecognised key
             },
             None => todo!(),
@@ -60,7 +60,7 @@ pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
     // Load final mesh
     match loader.load_mesh(&lines[prev..]) {
         Some(err) => return Err(err),
-        None => {},
+        None => {}
     }
 
     Ok(loader.meshes)
@@ -69,7 +69,7 @@ pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
 #[derive(Default)]
 struct ModelLoader {
     meshes: Vec<Mesh>,
-    materials: HashMap<String, Material>,   // TODO: Think about returning this directly to model layer
+    materials: HashMap<String, Material>, // TODO: Think about returning this directly to model layer
     positions: Vec<[f32; 3]>,
     texture_coords: Vec<[f32; 2]>,
     normals: Vec<[f32; 3]>,
@@ -142,7 +142,9 @@ impl ModelLoader {
         match face.len() {
             1 => self.current_faces.push(Face::Point([face[0]])),
             2 => self.current_faces.push(Face::Line([face[0], face[1]])),
-            3 => self.current_faces.push(Face::Triangle([face[0], face[1], face[2]])),
+            3 => self
+                .current_faces
+                .push(Face::Triangle([face[0], face[1], face[2]])),
             4 => self
                 .current_faces
                 .push(Face::Quad([face[0], face[1], face[2], face[3]])),
@@ -206,7 +208,7 @@ impl ModelLoader {
             self.export_face(face, &mut mesh, &mut vertex_map);
         }
 
-        // mesh.material = self.material.clone();
+        mesh.material = Some(self.materials.get(&self.current_material).unwrap().clone());
 
         mesh
     }
