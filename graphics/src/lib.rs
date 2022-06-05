@@ -211,7 +211,7 @@ impl<'a> State<'a> {
         });
 
         let model =
-            Model::from_str(Path::new("../data/torus.obj"), &device, Some("model")).unwrap();
+            Model::from_str(Path::new("data/cube.obj"), &device, Some("model")).unwrap();
 
         Self {
             surface,

@@ -32,7 +32,7 @@ pub fn load_model(file: &Path) -> Result<Vec<Mesh>, ObjLoadError> {
                                 Some(err) => return Err(err),
                                 None => {}
                             },
-                            Err(_) => return Err(ObjLoadError::InvalidMaterialLib),
+                            Err(err) => return Err(ObjLoadError::FileLoadError(err)),
                         }
                     }
                     None => return Err(ObjLoadError::InvalidMaterialLib),
@@ -432,6 +432,7 @@ enum Face {
     Quad([VertexIndices; 4]),
 }
 
+#[derive(Debug)]
 pub enum ObjLoadError {
     FileLoadError(std::io::Error),
     InvalidPositionValue,
