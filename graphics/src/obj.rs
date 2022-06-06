@@ -37,7 +37,7 @@ pub fn load_model(file: &Path) -> Result<Model, ObjLoadError> {
                     }
                     None => return Err(ObjLoadError::InvalidMaterialLib),
                 },
-                "o" => {
+                "o" | "g" => {
                     if prev == 0 {
                         // First mesh encountered
                         prev = i;
@@ -113,7 +113,11 @@ impl ModelLoader {
             }
         }
 
-        self.meshes.push(self.export_mesh());
+        // Groups/Objects can be defined with no faces, in which case there is no mesh
+        if self.current_faces.len() > 0 {
+            self.meshes.push(self.export_mesh());
+        }
+
         None
     }
 

@@ -207,7 +207,7 @@ impl GpuMaterial {
         )
         .unwrap();
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: layout,
+            layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,

@@ -11,6 +11,8 @@ pub struct Texture {
 }
 
 impl Texture {
+    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
     pub fn from_file(device: &Device, queue: &Queue, path: &Path, label: &str) -> Result<Self> {
         let data = std::fs::read(path);
 
@@ -21,7 +23,7 @@ impl Texture {
     }
 
     pub fn from_bytes(device: &Device, queue: &Queue, bytes: &[u8], label: &str) -> Result<Self> {
-        let img = image::load_from_memory(bytes).unwrap();
+        let img = image::load_from_memory(bytes).unwrap(); // TODO - Remove this unwrap
 
         Self::from_image(device, queue, &img, Some(label))
     }
@@ -81,5 +83,47 @@ impl Texture {
             view,
             sampler,
         })
+    }
+
+    pub fn create_depth_texture(
+        device: &Device,
+        config: &SurfaceConfiguration,
+        label: &str,
+    ) -> Self {
+        let size = Extent3d {
+            width: config.width,
+            height: config.height,
+            depth_or_array_layers: 1,
+        };
+        let desc = TextureDescriptor {
+            label: Some(label),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: Self::DEPTH_FORMAT,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+        };
+        let texture = device.create_texture(&desc);
+
+        let view = texture.create_view(&TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            compare: Some(wgpu::CompareFunction::LessEqual),
+            lod_min_clamp: -100.0,
+            lod_max_clamp: 100.0,
+            ..Default::default()
+        });
+
+        Self {
+            texture,
+            view,
+            sampler,
+        }
     }
 }
