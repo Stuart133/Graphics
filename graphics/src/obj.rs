@@ -217,10 +217,7 @@ impl ModelLoader {
             self.export_face(face, &mut mesh, &mut vertex_map);
         }
 
-        mesh.material = self
-            .material_map
-            .get(&self.current_material)
-            .cloned();
+        mesh.material = self.material_map.get(&self.current_material).cloned();
 
         mesh
     }

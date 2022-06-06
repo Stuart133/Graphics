@@ -206,6 +206,15 @@ impl GpuMaterial {
             "yeah",
         )
         .unwrap();
+
+        let normal_texture = texture::Texture::from_file(
+            device,
+            queue,
+            dir.join(material.bump_map_file).as_path(),
+            "normal",
+        )
+        .unwrap();
+
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout,
             entries: &[
@@ -215,6 +224,14 @@ impl GpuMaterial {
                 },
                 BindGroupEntry {
                     binding: 1,
+                    resource: BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: BindingResource::TextureView(&normal_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 3,
                     resource: BindingResource::Sampler(&diffuse_texture.sampler),
                 },
             ],

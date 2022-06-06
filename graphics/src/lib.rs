@@ -95,13 +95,31 @@ impl<'a> State<'a> {
                         visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Texture {
                             multisampled: false,
-                            view_dimension: TextureViewDimension::D2,
                             sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
                         },
                         count: None,
                     },
                     BindGroupLayoutEntry {
                         binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: {
+                            BindingType::Texture {
+                                multisampled: false,
+                                sample_type: TextureSampleType::Float { filterable: true },
+                                view_dimension: TextureViewDimension::D2,
+                            }
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 3,
                         visibility: ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
@@ -151,7 +169,8 @@ impl<'a> State<'a> {
             label: Some("camera_bind_group"),
         });
 
-        let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+        let depth_texture =
+            texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
         let shader = device.create_shader_module(&include_wgsl!("shader.wgsl"));
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -201,7 +220,7 @@ impl<'a> State<'a> {
         });
 
         let model = GpuModel::from_file(
-            Path::new("data/torus.obj"),
+            Path::new("data/cube.obj"),
             &device,
             &queue,
             &texture_bind_group_layout,
@@ -233,7 +252,8 @@ impl<'a> State<'a> {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
 
-            self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+            self.depth_texture =
+                texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
         }
     }
 
@@ -299,7 +319,7 @@ impl<'a> State<'a> {
                         0,
                         &self.model.materials[material].diffuse_bind_group,
                         &[],
-                    );    
+                    );
                 }
                 render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);
             }
