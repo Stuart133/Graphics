@@ -1,6 +1,5 @@
 # This file uses centimeters as units for non-parametric coordinates.
 
-mtllib shit.mtl
 g default
 v -0.403359 -0.985118 -0.118973
 v -0.475894 -0.985441 -0.078006
@@ -42560,7 +42559,6 @@ vn -0.376296 0.925298 0.047162
 vn -0.368063 0.817841 -0.442342
 s 1
 g Mesh
-usemtl initialShadingGroup
 f 3552/0/1 5/0/2 3549/0/3
 f 5/0/2 3550/0/4 3549/0/3
 f 3550/0/4 3553/0/5 2/0/6

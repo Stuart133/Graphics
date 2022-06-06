@@ -294,11 +294,13 @@ impl<'a> State<'a> {
             for mesh in self.model.meshes.iter() {
                 render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);
-                render_pass.set_bind_group(
-                    0,
-                    &self.model.materials[mesh.material].diffuse_bind_group,
-                    &[],
-                );
+                if let Some(material) = mesh.material {
+                    render_pass.set_bind_group(
+                        0,
+                        &self.model.materials[material].diffuse_bind_group,
+                        &[],
+                    );    
+                }
                 render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);
             }
         }

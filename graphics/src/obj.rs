@@ -1,4 +1,5 @@
 //! A simple .obj model loading module
+// TODO: Write some tests for this module
 
 use std::{
     collections::HashMap,
@@ -219,8 +220,7 @@ impl ModelLoader {
         mesh.material = self
             .material_map
             .get(&self.current_material)
-            .unwrap()
-            .to_owned();
+            .cloned();
 
         mesh
     }

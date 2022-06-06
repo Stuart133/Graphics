@@ -82,7 +82,7 @@ pub struct Mesh {
     pub indices: Vec<u32>,
 
     /// Index of material in model material vector
-    pub material: usize,
+    pub material: Option<usize>,
 }
 
 /// A generalized material to be applied to a mesh
@@ -159,7 +159,7 @@ pub struct GpuMesh {
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub vertex_count: u32,
-    pub material: usize,
+    pub material: Option<usize>,
 }
 
 impl GpuMesh {
