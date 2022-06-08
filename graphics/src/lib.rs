@@ -15,6 +15,7 @@ mod camera;
 mod model;
 mod obj;
 mod texture;
+mod transform;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -47,8 +48,8 @@ impl TransformUniform {
         }
     }
 
-    fn rotate(&mut self, x: Rad<f32>) {
-        self.transform = Matrix4::<f32>::from_angle_x(x).into()
+    fn update(&mut self, transform: &transform::Transform) {
+        self.transform = transform.build_transform_matrix().into()
     }
 }
 
@@ -65,9 +66,9 @@ struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    transform: transform::Transform,
     transform_uniform: TransformUniform,
     transform_buffer: wgpu::Buffer,
-    x_angle: Rad<f32>,
     model: GpuModel<'a>,
 }
 
@@ -167,6 +168,7 @@ impl<'a> State<'a> {
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
+        let transform = transform::Transform::new();
         let transform_uniform = TransformUniform::new();
         let transform_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Transform buffer"),
@@ -287,9 +289,9 @@ impl<'a> State<'a> {
             camera_uniform,
             camera_buffer,
             camera_bind_group,
+            transform,
             transform_uniform,
             transform_buffer,
-            x_angle: Rad::<f32>::zero(),
             model,
         }
     }
@@ -320,12 +322,14 @@ impl<'a> State<'a> {
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
         );
-        self.x_angle += Rad(0.1);
-        self.transform_uniform.rotate(self.x_angle);
+
+        self.transform.rotation[0] += Rad(0.05);
+        self.transform.rotation[1] += Rad(0.02);
+        self.transform_uniform.update(&self.transform);
         self.queue.write_buffer(
             &self.transform_buffer,
             0,
-            bytemuck::cast_slice(&[self.transform_uniform])
+            bytemuck::cast_slice(&[self.transform_uniform]),
         );
 
         let output = self.surface.get_current_texture()?;
