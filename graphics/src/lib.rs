@@ -34,6 +34,24 @@ impl CameraUniform {
     }
 }
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct TransformUniform {
+    transform: [[f32; 4]; 4],
+}
+
+impl TransformUniform {
+    fn new() -> Self {
+        TransformUniform {
+            transform: Matrix4::identity().into(),
+        }
+    }
+
+    fn rotate(&mut self, x: Rad<f32>) {
+        self.transform = Matrix4::<f32>::from_angle_x(x).into()
+    }
+}
+
 struct State<'a> {
     surface: Surface,
     device: Device,
@@ -47,6 +65,9 @@ struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    transform_uniform: TransformUniform,
+    transform_buffer: wgpu::Buffer,
+    x_angle: Rad<f32>,
     model: GpuModel<'a>,
 }
 
@@ -146,26 +167,51 @@ impl<'a> State<'a> {
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
+        let transform_uniform = TransformUniform::new();
+        let transform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Transform buffer"),
+            contents: bytemuck::cast_slice(&[transform_uniform]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
         let camera_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("camera_bind_group_layout"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::VERTEX,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
             });
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &camera_bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: transform_buffer.as_entire_binding(),
+                },
+            ],
             label: Some("camera_bind_group"),
         });
 
@@ -241,6 +287,9 @@ impl<'a> State<'a> {
             camera_uniform,
             camera_buffer,
             camera_bind_group,
+            transform_uniform,
+            transform_buffer,
+            x_angle: Rad::<f32>::zero(),
             model,
         }
     }
@@ -270,6 +319,13 @@ impl<'a> State<'a> {
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+        self.x_angle += Rad(0.1);
+        self.transform_uniform.rotate(self.x_angle);
+        self.queue.write_buffer(
+            &self.transform_buffer,
+            0,
+            bytemuck::cast_slice(&[self.transform_uniform])
         );
 
         let output = self.surface.get_current_texture()?;
