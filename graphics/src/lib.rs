@@ -323,8 +323,10 @@ impl<'a> State<'a> {
             bytemuck::cast_slice(&[self.camera_uniform]),
         );
 
-        self.transform.rotation[0] += Rad(0.05);
         self.transform.rotation[1] += Rad(0.02);
+        self.transform.scale[0] += 0.01;
+        self.transform.translate[1] += 0.01;
+
         self.transform_uniform.update(&self.transform);
         self.queue.write_buffer(
             &self.transform_buffer,

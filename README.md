@@ -3,7 +3,6 @@ A collection of programs written while learning computer graphics
 
 ## Potential Todo's
 
-- Add scaling & translation to transform matrix
 - Push constants for transforming multiple models
 - Handle missing textures
 - More camera movement controls
