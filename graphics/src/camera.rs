@@ -58,6 +58,8 @@ pub struct CameraController<'a> {
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
+    is_up_pressed: bool,
+    is_down_pressed: bool,
     mode: &'a dyn ControlMode,
 }
 
@@ -69,6 +71,8 @@ impl<'a> CameraController<'a> {
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
+            is_up_pressed: false,
+            is_down_pressed: false,
             mode: mode,
         }
     }
@@ -100,6 +104,14 @@ impl<'a> CameraController<'a> {
                     }
                     VirtualKeyCode::D | VirtualKeyCode::Right => {
                         self.is_right_pressed = is_pressed;
+                        true
+                    }
+                    VirtualKeyCode::E => {
+                        self.is_up_pressed = is_pressed;
+                        true
+                    }
+                    VirtualKeyCode::Q => {
+                        self.is_down_pressed = is_pressed;
                         true
                     }
                     _ => false,
@@ -165,6 +177,16 @@ impl ControlMode for MoveMode {
         if controller.is_left_pressed {
             camera.eye.x -= controller.speed;
             camera.target.x -= controller.speed;
+        }
+
+        if controller.is_up_pressed {
+            camera.eye.y += controller.speed;
+            camera.target.y += controller.speed;
+        }
+
+        if controller.is_down_pressed {
+            camera.eye.y -= controller.speed;
+            camera.target.y -= controller.speed;
         }
     }
 }
