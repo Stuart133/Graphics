@@ -48,22 +48,28 @@ const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
-pub struct CameraController {
+pub trait ControlMode {
+    fn update_camera(&self, controller: &CameraController, camera: &mut Camera);
+}
+
+pub struct CameraController<'a> {
     speed: f32,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
+    mode: &'a dyn ControlMode,
 }
 
-impl CameraController {
-    pub fn new(speed: f32) -> CameraController {
+impl<'a> CameraController<'a> {
+    pub fn new(speed: f32, mode: &'a dyn ControlMode) -> CameraController<'a> {
         Self {
             speed,
             is_forward_pressed: false,
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
+            mode: mode,
         }
     }
 
@@ -104,15 +110,23 @@ impl CameraController {
     }
 
     pub fn update_camera(&self, camera: &mut Camera) {
+        self.mode.update_camera(self, camera);
+    }
+}
+
+pub struct RotateMode;
+
+impl ControlMode for RotateMode {
+    fn update_camera(&self, controller: &CameraController, camera: &mut Camera) {
         let forward = camera.target - camera.eye;
         let forward_norm = forward.normalize();
         let forward_mag = forward.magnitude();
 
-        if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed;
+        if controller.is_forward_pressed && forward_mag > controller.speed {
+            camera.eye += forward_norm * controller.speed;
         }
-        if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed;
+        if controller.is_backward_pressed {
+            camera.eye -= forward_norm * controller.speed;
         }
 
         let right = forward_norm.cross(camera.up);
@@ -120,11 +134,37 @@ impl CameraController {
         let forward = camera.target - camera.eye;
         let forward_mag = forward.magnitude();
 
-        if self.is_right_pressed {
-            camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
+        if controller.is_right_pressed {
+            camera.eye = camera.target - (forward + right * controller.speed).normalize() * forward_mag;
         }
-        if self.is_left_pressed {
-            camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
+        if controller.is_left_pressed {
+            camera.eye = camera.target - (forward - right * controller.speed).normalize() * forward_mag;
+        }
+    }
+}
+
+pub struct MoveMode;
+
+impl ControlMode for MoveMode {
+    fn update_camera(&self, controller: &CameraController, camera: &mut Camera) {
+        if controller.is_forward_pressed {
+            camera.eye.z -= controller.speed;
+            camera.target.z -= controller.speed;
+        }
+
+        if controller.is_backward_pressed {
+            camera.eye.z += controller.speed;
+            camera.target.z += controller.speed;
+        }
+
+        if controller.is_right_pressed {
+            camera.eye.x += controller.speed;
+            camera.target.x += controller.speed;
+        }
+
+        if controller.is_left_pressed {
+            camera.eye.x -= controller.speed;
+            camera.target.x -= controller.speed;
         }
     }
 }

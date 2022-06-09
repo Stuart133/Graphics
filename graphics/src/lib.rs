@@ -61,7 +61,7 @@ struct State<'a> {
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: RenderPipeline,
     depth_texture: texture::Texture,
-    camera_controller: CameraController,
+    camera_controller: CameraController<'a>,
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
@@ -158,7 +158,7 @@ impl<'a> State<'a> {
             0.1,
             100.0,
         );
-        let camera_controller = CameraController::new(0.2);
+        let camera_controller = CameraController::new(0.2, &MoveMode{});
 
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
@@ -322,10 +322,6 @@ impl<'a> State<'a> {
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
         );
-
-        self.transform.rotation[1] += Rad(0.02);
-        self.transform.scale[0] += 0.01;
-        self.transform.translate[1] += 0.01;
 
         self.transform_uniform.update(&self.transform);
         self.queue.write_buffer(
