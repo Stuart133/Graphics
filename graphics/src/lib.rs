@@ -17,6 +17,11 @@ mod obj;
 mod texture;
 mod transform;
 
+pub enum ControlEvent<'a> {
+    WindowEvent(&'a WindowEvent<'a>),
+    DeviceEvent(DeviceEvent),
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniform {
@@ -308,7 +313,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn input(&mut self, event: &WindowEvent) -> bool {
+    fn input(&mut self, event: &ControlEvent) -> bool {
         self.camera_controller.process_events(event)
     }
 
@@ -396,6 +401,7 @@ pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+    window.set_cursor_grab(true);
 
     let mut state = State::new(&window).await;
 
@@ -404,7 +410,7 @@ pub async fn run() {
             ref event,
             window_id,
         } if window_id == window.id() => {
-            if !state.input(event) {
+            if !state.input(&ControlEvent::WindowEvent(event)) {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
@@ -425,6 +431,9 @@ pub async fn run() {
                     _ => {}
                 }
             }
+        },
+        Event::DeviceEvent { event, .. } => {
+            state.input(&ControlEvent::DeviceEvent(event));
         }
         Event::RedrawRequested(window_id) if window_id == window.id() => {
             state.update();
