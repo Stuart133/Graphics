@@ -163,7 +163,7 @@ impl<'a> State<'a> {
             0.1,
             100.0,
         );
-        let camera_controller = CameraController::new(0.2, &MoveMode{});
+        let camera_controller = CameraController::new(0.2, &MoveMode {});
 
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
@@ -431,7 +431,7 @@ pub async fn run() {
                     _ => {}
                 }
             }
-        },
+        }
         Event::DeviceEvent { event, .. } => {
             state.input(&ControlEvent::DeviceEvent(event));
         }

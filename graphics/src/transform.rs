@@ -16,6 +16,7 @@ impl Transform {
     }
 
     pub fn build_transform_matrix(&self) -> Matrix4<f32> {
+        // TODO - Figure out the right rotation axis for a single matrix
         Matrix4::from_angle_x(self.rotation[0])
             * Matrix4::from_angle_y(self.rotation[1])
             * Matrix4::from_angle_z(self.rotation[2])

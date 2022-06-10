@@ -88,59 +88,54 @@ impl<'a> CameraController<'a> {
 
     pub fn process_events(&mut self, event: &ControlEvent) -> bool {
         match event {
-            ControlEvent::WindowEvent(event) => {
-                match event {
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state,
-                                virtual_keycode: Some(keycode),
-                                ..
-                            },
-                        ..
-                    } => {
-                        let is_pressed = *state == ElementState::Pressed;
-                        match keycode {
-                            VirtualKeyCode::W | VirtualKeyCode::Up => {
-                                self.is_forward_pressed = is_pressed;
-                                true
-                            }
-                            VirtualKeyCode::A | VirtualKeyCode::Left => {
-                                self.is_left_pressed = is_pressed;
-                                true
-                            }
-                            VirtualKeyCode::S | VirtualKeyCode::Down => {
-                                self.is_backward_pressed = is_pressed;
-                                true
-                            }
-                            VirtualKeyCode::D | VirtualKeyCode::Right => {
-                                self.is_right_pressed = is_pressed;
-                                true
-                            }
-                            VirtualKeyCode::E => {
-                                self.is_up_pressed = is_pressed;
-                                true
-                            }
-                            VirtualKeyCode::Q => {
-                                self.is_down_pressed = is_pressed;
-                                true
-                            }
-                            _ => false,
+            ControlEvent::WindowEvent(event) => match event {
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state,
+                            virtual_keycode: Some(keycode),
+                            ..
+                        },
+                    ..
+                } => {
+                    let is_pressed = *state == ElementState::Pressed;
+                    match keycode {
+                        VirtualKeyCode::W | VirtualKeyCode::Up => {
+                            self.is_forward_pressed = is_pressed;
+                            true
                         }
-                    },
-                    _ => false,        
+                        VirtualKeyCode::A | VirtualKeyCode::Left => {
+                            self.is_left_pressed = is_pressed;
+                            true
+                        }
+                        VirtualKeyCode::S | VirtualKeyCode::Down => {
+                            self.is_backward_pressed = is_pressed;
+                            true
+                        }
+                        VirtualKeyCode::D | VirtualKeyCode::Right => {
+                            self.is_right_pressed = is_pressed;
+                            true
+                        }
+                        VirtualKeyCode::E => {
+                            self.is_up_pressed = is_pressed;
+                            true
+                        }
+                        VirtualKeyCode::Q => {
+                            self.is_down_pressed = is_pressed;
+                            true
+                        }
+                        _ => false,
+                    }
                 }
-            }
-            ControlEvent::DeviceEvent(event) => {
-                match event {
-                    DeviceEvent::MouseMotion { delta } => {
-                        self.x_delta -= delta.0 as f32;
-                        self.y_delta -= delta.1 as f32;
-                        println!("{:?}", delta);
-                        true
-                    },
-                    _ => false,
+                _ => false,
+            },
+            ControlEvent::DeviceEvent(event) => match event {
+                DeviceEvent::MouseMotion { delta } => {
+                    self.x_delta -= delta.0 as f32;
+                    self.y_delta -= delta.1 as f32;
+                    true
                 }
+                _ => false,
             },
         }
     }
@@ -171,10 +166,12 @@ impl ControlMode for RotateMode {
         let forward_mag = forward.magnitude();
 
         if controller.is_right_pressed {
-            camera.eye = camera.target - (forward + right * controller.speed).normalize() * forward_mag;
+            camera.eye =
+                camera.target - (forward + right * controller.speed).normalize() * forward_mag;
         }
         if controller.is_left_pressed {
-            camera.eye = camera.target - (forward - right * controller.speed).normalize() * forward_mag;
+            camera.eye =
+                camera.target - (forward - right * controller.speed).normalize() * forward_mag;
         }
     }
 }
@@ -183,33 +180,23 @@ pub struct MoveMode;
 
 impl ControlMode for MoveMode {
     fn update_camera(&self, controller: &mut CameraController, camera: &mut Camera) {
-        if controller.x_delta != 0.0 {
-            let rotate = Matrix3::from_angle_y(Deg::<f32>(controller.x_delta * controller.speed));
+        let mut view = camera.target - camera.eye;
 
-            let view = camera.target - camera.eye;
-            let new_view = rotate * view;
+        // Handle look first, then move along the view vector
+        let rotate = Matrix3::from_angle_x(Deg::<f32>(controller.y_delta * controller.speed))
+            * Matrix3::from_angle_y(Deg::<f32>(controller.x_delta * controller.speed));
+        view = rotate * view;
+        camera.target = camera.eye + view;
 
-            camera.target = camera.eye + new_view;
-
-            controller.x_delta = 0.0;
-        }
-        if controller.y_delta != 0.0 {
-            let rotate = Matrix3::from_angle_x(Deg::<f32>(controller.y_delta * controller.speed));
-
-            let view = camera.target - camera.eye;
-            let new_view = rotate * view;
-
-            camera.target = camera.eye + new_view;
-
-            controller.y_delta = 0.0;
-        }
+        controller.x_delta = 0.0;
+        controller.y_delta = 0.0;
 
         if controller.is_forward_pressed {
-            camera.eye.z -= controller.speed;
-            camera.target.z -= controller.speed;
+            camera.eye += view * controller.speed * 0.1;
         }
 
         if controller.is_backward_pressed {
+            // camera.eye += view * controller.speed;
             camera.eye.z += controller.speed;
             camera.target.z += controller.speed;
         }
