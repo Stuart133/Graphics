@@ -51,7 +51,7 @@ const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 );
 
 pub trait ControlMode {
-    fn update_camera(&self, controller: &CameraController, camera: &mut Camera);
+    fn update_camera(&self, controller: &mut CameraController, camera: &mut Camera);
 }
 
 pub struct CameraController<'a> {
@@ -62,6 +62,11 @@ pub struct CameraController<'a> {
     is_right_pressed: bool,
     is_up_pressed: bool,
     is_down_pressed: bool,
+
+    /// Mouse movement delta still to be applied
+    x_delta: f32,
+    y_delta: f32,
+
     mode: &'a dyn ControlMode,
 }
 
@@ -75,6 +80,8 @@ impl<'a> CameraController<'a> {
             is_right_pressed: false,
             is_up_pressed: false,
             is_down_pressed: false,
+            x_delta: 0.0,
+            y_delta: 0.0,
             mode: mode,
         }
     }
@@ -127,6 +134,8 @@ impl<'a> CameraController<'a> {
             ControlEvent::DeviceEvent(event) => {
                 match event {
                     DeviceEvent::MouseMotion { delta } => {
+                        self.x_delta -= delta.0 as f32;
+                        self.y_delta -= delta.1 as f32;
                         println!("{:?}", delta);
                         true
                     },
@@ -136,7 +145,7 @@ impl<'a> CameraController<'a> {
         }
     }
 
-    pub fn update_camera(&self, camera: &mut Camera) {
+    pub fn update_camera(&mut self, camera: &mut Camera) {
         self.mode.update_camera(self, camera);
     }
 }
@@ -144,7 +153,7 @@ impl<'a> CameraController<'a> {
 pub struct RotateMode;
 
 impl ControlMode for RotateMode {
-    fn update_camera(&self, controller: &CameraController, camera: &mut Camera) {
+    fn update_camera(&self, controller: &mut CameraController, camera: &mut Camera) {
         let forward = camera.target - camera.eye;
         let forward_norm = forward.normalize();
         let forward_mag = forward.magnitude();
@@ -173,7 +182,28 @@ impl ControlMode for RotateMode {
 pub struct MoveMode;
 
 impl ControlMode for MoveMode {
-    fn update_camera(&self, controller: &CameraController, camera: &mut Camera) {
+    fn update_camera(&self, controller: &mut CameraController, camera: &mut Camera) {
+        if controller.x_delta != 0.0 {
+            let rotate = Matrix3::from_angle_y(Deg::<f32>(controller.x_delta * controller.speed));
+
+            let view = camera.target - camera.eye;
+            let new_view = rotate * view;
+
+            camera.target = camera.eye + new_view;
+
+            controller.x_delta = 0.0;
+        }
+        if controller.y_delta != 0.0 {
+            let rotate = Matrix3::from_angle_x(Deg::<f32>(controller.y_delta * controller.speed));
+
+            let view = camera.target - camera.eye;
+            let new_view = rotate * view;
+
+            camera.target = camera.eye + new_view;
+
+            controller.y_delta = 0.0;
+        }
+
         if controller.is_forward_pressed {
             camera.eye.z -= controller.speed;
             camera.target.z -= controller.speed;

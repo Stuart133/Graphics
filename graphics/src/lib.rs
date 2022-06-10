@@ -401,7 +401,7 @@ pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
-    window.set_cursor_grab(true);
+    window.set_cursor_grab(true).expect("could not grab cursor");
 
     let mut state = State::new(&window).await;
 
