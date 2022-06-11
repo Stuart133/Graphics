@@ -192,33 +192,33 @@ impl ControlMode for MoveMode {
         controller.y_delta = 0.0;
 
         if controller.is_forward_pressed {
-            camera.eye += view * controller.speed * 0.1;
+            camera.eye += view * controller.speed;
+            camera.target += view * controller.speed;
         }
 
         if controller.is_backward_pressed {
-            // camera.eye += view * controller.speed;
-            camera.eye.z += controller.speed;
-            camera.target.z += controller.speed;
+            camera.eye -= view * controller.speed;
+            camera.target -= view * controller.speed;
         }
 
         if controller.is_right_pressed {
-            camera.eye.x += controller.speed;
-            camera.target.x += controller.speed;
+            camera.eye += view.cross(camera.up) * controller.speed;
+            camera.target += view.cross(camera.up) * controller.speed;
         }
 
         if controller.is_left_pressed {
-            camera.eye.x -= controller.speed;
-            camera.target.x -= controller.speed;
+            camera.eye -= view.cross(camera.up) * controller.speed;
+            camera.target -= view.cross(camera.up) * controller.speed;
         }
 
         if controller.is_up_pressed {
-            camera.eye.y += controller.speed;
-            camera.target.y += controller.speed;
+            camera.eye += camera.up * controller.speed;
+            camera.target += camera.up * controller.speed;
         }
 
         if controller.is_down_pressed {
-            camera.eye.y -= controller.speed;
-            camera.target.y -= controller.speed;
+            camera.eye -= camera.up * controller.speed;
+            camera.target -= camera.up * controller.speed;
         }
     }
 }
