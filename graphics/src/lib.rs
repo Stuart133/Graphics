@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use camera::{Camera, MoveMode, CameraController};
+use cgmath::Vector3;
 use render::{ControlEvent, State};
 use wgpu::*;
 use winit::{
@@ -21,7 +23,18 @@ pub async fn run() {
     let window = WindowBuilder::new().build(&event_loop).unwrap();
     window.set_cursor_grab(true).expect("could not grab cursor");
 
-    let mut state = State::new(&window).await;
+    let camera = Camera::new(
+        (0.0, 10.0, 0.0).into(),
+        (0.0, 0.0, 0.0).into(),
+        Vector3::unit_y(),
+        window.inner_size().width as f32 / window.inner_size().height as f32,
+        45.0,
+        0.1,
+        100.0,
+    );
+    let camera_controller = CameraController::new(0.2, &MoveMode {});
+
+    let mut state = State::new(&window, camera, camera_controller).await;
     let model = obj::load_model(Path::new("./data/sphere.obj")).expect("model loading failed");
     state.add_model(model);
 

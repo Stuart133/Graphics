@@ -68,7 +68,7 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    pub async fn new(window: &Window) -> State<'a> {
+    pub async fn new(window: &Window, camera: Camera, camera_controller: CameraController<'a>) -> State<'a> {
         let size = window.inner_size();
 
         let instance = Instance::new(Backends::all());
@@ -143,17 +143,6 @@ impl<'a> State<'a> {
                     },
                 ],
             });
-
-        let camera = Camera::new(
-            (0.0, 1.0, 2.0).into(),
-            (0.0, 0.0, 0.0).into(),
-            Vector3::unit_y(),
-            config.width as f32 / config.height as f32,
-            45.0,
-            0.1,
-            100.0,
-        );
-        let camera_controller = CameraController::new(0.2, &MoveMode {});
 
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
@@ -354,9 +343,9 @@ impl<'a> State<'a> {
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
                             a: 1.0,
                         }),
                         store: true,
