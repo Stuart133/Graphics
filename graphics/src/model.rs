@@ -114,10 +114,10 @@ pub struct Material {
     /// Illumintation mode of the material. Often now not specified
     pub illumination_mode: Option<MaterialIllumination>,
 
-    /// Path to normal map file
+    /// Absolute path to normal map file
     pub bump_map_file: String,
 
-    /// Path to diffuse texutre file
+    /// Absolute path to diffuse texutre file
     pub diffuse_texture_file: String,
 }
 
@@ -196,13 +196,12 @@ impl GpuMaterial {
         device: &Device,
         queue: &Queue,
         layout: &BindGroupLayout,
-        dir: &Path,
     ) -> GpuMaterial {
         // TODO - Handle the error properly
         let diffuse_texture = texture::Texture::from_file(
             device,
             queue,
-            dir.join(material.diffuse_texture_file).as_path(),
+            Path::new(&material.diffuse_texture_file),
             "yeah",
         )
         .unwrap();
@@ -210,7 +209,7 @@ impl GpuMaterial {
         let normal_texture = texture::Texture::from_file(
             device,
             queue,
-            dir.join(material.bump_map_file).as_path(),
+            Path::new(&material.bump_map_file),
             "normal",
         )
         .unwrap();
@@ -254,31 +253,38 @@ impl<'a> GpuModel<'a> {
     ) -> Result<GpuModel<'a>, ModelLoadError> {
         match crate::obj::load_model(model_path) {
             Ok(model) => {
-                let gpu_model = GpuModel {
-                    meshes: model
-                        .meshes
-                        .into_iter()
-                        .map(|mesh| GpuMesh::from_mesh(mesh, device))
-                        .collect(),
-                    materials: model
-                        .materials
-                        .into_iter()
-                        .map(|material| {
-                            GpuMaterial::from_material(
-                                material,
-                                device,
-                                queue,
-                                layout,
-                                &model_path.parent().unwrap(),
-                            )
-                        })
-                        .collect(),
-                    label,
-                };
-
-                Ok(gpu_model)
+                Ok(GpuModel::from_model(&model, device, queue, layout, label))
             }
             Err(_) => Err(ModelLoadError::InvalidModel),
+        }
+    }
+
+    pub fn from_model(
+        model: &Model,
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        label: Option<&'a str>,
+    ) -> GpuModel<'a> {
+        GpuModel {
+            meshes: model
+                .meshes
+                .into_iter()
+                .map(|mesh| GpuMesh::from_mesh(mesh, device))
+                .collect(),
+            materials: model
+                .materials
+                .into_iter()
+                .map(|material| {
+                    GpuMaterial::from_material(
+                        material,
+                        device,
+                        queue,
+                        layout,
+                    )
+                })
+                .collect(),
+            label,
         }
     }
 }

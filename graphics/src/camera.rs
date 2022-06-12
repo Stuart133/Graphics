@@ -227,13 +227,25 @@ impl ControlMode for MoveMode {
 mod tests {
     use cgmath::*;
 
-    use super::{Camera, MoveMode, CameraController};
+    use super::{Camera, CameraController, MoveMode};
 
     fn generate_test_camera() -> Camera {
-        Camera{
-            eye: Point3{ x: 0.0, y: 0.0, z: 0.0 },
-            target: Point3{ x: 1.0, y: 1.0, z: 1.0 },
-            up: Vector3{ x: 0.0, y: 1.0, z: 0.0 },
+        Camera {
+            eye: Point3 {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            target: Point3 {
+                x: 1.0,
+                y: 1.0,
+                z: 1.0,
+            },
+            up: Vector3 {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
             aspect: 1.0,
             fovy: 45.0,
             znear: 0.1,
@@ -244,30 +256,44 @@ mod tests {
     #[test]
 
     pub fn update_x_view_movemode() {
-        let mode = MoveMode{};
+        let mode = MoveMode {};
         let mut controller = CameraController::new(1.0, &mode);
         let mut camera = generate_test_camera();
 
         controller.x_delta = 90.0;
         controller.update_camera(&mut camera);
 
-        assert_abs_diff_eq!(camera.target, Point3{x: 1.0, y: 1.0, z: -1.0 });
+        assert_abs_diff_eq!(
+            camera.target,
+            Point3 {
+                x: 1.0,
+                y: 1.0,
+                z: -1.0
+            }
+        );
     }
     #[test]
     pub fn update_y_view_movemode() {
-        let mode = MoveMode{};
+        let mode = MoveMode {};
         let mut controller = CameraController::new(1.0, &mode);
         let mut camera = generate_test_camera();
 
         controller.y_delta = 90.0;
         controller.update_camera(&mut camera);
 
-        assert_abs_diff_eq!(camera.target, Point3{x: 1.0, y: -1.0, z: 1.0 });
+        assert_abs_diff_eq!(
+            camera.target,
+            Point3 {
+                x: 1.0,
+                y: -1.0,
+                z: 1.0
+            }
+        );
     }
 
-    #[test] 
+    #[test]
     pub fn update_both_view_movemode() {
-        let mode = MoveMode{};
+        let mode = MoveMode {};
         let mut controller = CameraController::new(1.0, &mode);
         let mut camera = generate_test_camera();
 
@@ -275,6 +301,13 @@ mod tests {
         controller.y_delta = -90.0;
         controller.update_camera(&mut camera);
 
-        assert_abs_diff_eq!(camera.target, Point3{x: -1.0, y: 1.0, z: -1.0 });
+        assert_abs_diff_eq!(
+            camera.target,
+            Point3 {
+                x: -1.0,
+                y: 1.0,
+                z: -1.0
+            }
+        );
     }
 }
