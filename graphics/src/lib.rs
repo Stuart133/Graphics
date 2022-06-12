@@ -22,7 +22,7 @@ pub async fn run() {
     window.set_cursor_grab(true).expect("could not grab cursor");
 
     let mut state = State::new(&window).await;
-    let model = obj::load_model(Path::new("./data/cube.obj")).expect("model loading failed");
+    let model = obj::load_model(Path::new("./data/sphere.obj")).expect("model loading failed");
     state.add_model(model);
 
     event_loop.run(move |event, _, control_flow| match event {
@@ -47,6 +47,19 @@ pub async fn run() {
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         state.resize(**new_inner_size);
+                    }
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::R),
+                                ..
+                            },
+                        ..
+                    } => {
+                        let model = obj::load_model(Path::new("./data/cube.obj"))
+                            .expect("model loading failed");
+                        state.add_model(model);
                     }
                     _ => {}
                 }
