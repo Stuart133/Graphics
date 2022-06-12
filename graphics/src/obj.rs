@@ -29,7 +29,7 @@ pub fn load_model(file: &Path) -> Result<Model, ObjLoadError> {
                         match std::fs::read_to_string(
                             file.parent().unwrap().join(Path::new(mtl_file)),
                         ) {
-                            Ok(raw_mtl) => match loader.load_mtl(raw_mtl.as_str()) {
+                            Ok(raw_mtl) => match loader.load_mtl(raw_mtl.as_str(), file.parent().expect("file does not have parent")) {
                                 Some(err) => return Err(err),
                                 None => {}
                             },
@@ -278,7 +278,7 @@ impl ModelLoader {
     }
 
     // TODO - Swap load material into the impl and this to the top level
-    fn load_mtl(&mut self, raw_mtl: &str) -> Option<ObjLoadError> {
+    fn load_mtl(&mut self, raw_mtl: &str, dir: &Path) -> Option<ObjLoadError> {
         let mut prev = 0;
         let mut current_material_name = "".to_string();
 
@@ -294,7 +294,7 @@ impl ModelLoader {
                                 current_material_name = elements.next().unwrap().to_string();
                                 prev = i;
                             } else {
-                                match load_material(&lines[prev..i]) {
+                                match load_material(&lines[prev..i], dir) {
                                     Ok(mat) => self.push_material(mat, current_material_name),
                                     Err(_) => return Some(ObjLoadError::InvalidMaterialLib),
                                 };
@@ -310,7 +310,7 @@ impl ModelLoader {
         }
 
         // Load final mtl
-        match load_material(&lines[prev..]) {
+        match load_material(&lines[prev..], dir) {
             Ok(mat) => self.push_material(mat, current_material_name),
             Err(_) => return Some(ObjLoadError::InvalidMaterialLib),
         };
@@ -325,7 +325,7 @@ impl ModelLoader {
     }
 }
 
-fn load_material(raw_material: &[&str]) -> Result<Material, ()> {
+fn load_material(raw_material: &[&str], dir: &Path) -> Result<Material, ()> {
     let mut material = Material::default();
 
     for line in raw_material.iter() {
@@ -357,11 +357,11 @@ fn load_material(raw_material: &[&str]) -> Result<Material, ()> {
                     Err(_) => return Err(()),
                 },
                 "map_Bump" => match elements.next() {
-                    Some(file) => material.bump_map_file = file.to_string(),
+                    Some(file) => material.bump_map_file = dir.join(file.to_string()).to_path_buf(),
                     None => return Err(()),
                 },
                 "map_Kd" => match elements.next() {
-                    Some(file) => material.diffuse_texture_file = file.to_string(),
+                    Some(file) => material.diffuse_texture_file = dir.join(file.to_string()).to_path_buf(),
                     None => return Err(()),
                 },
                 _ => {} // Just ignore any unrecognised key

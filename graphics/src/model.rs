@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
@@ -115,10 +115,10 @@ pub struct Material {
     pub illumination_mode: Option<MaterialIllumination>,
 
     /// Absolute path to normal map file
-    pub bump_map_file: String,
+    pub bump_map_file: PathBuf,
 
     /// Absolute path to diffuse texutre file
-    pub diffuse_texture_file: String,
+    pub diffuse_texture_file: PathBuf,
 }
 
 /// Material Illumintaion Modes
@@ -253,14 +253,14 @@ impl<'a> GpuModel<'a> {
     ) -> Result<GpuModel<'a>, ModelLoadError> {
         match crate::obj::load_model(model_path) {
             Ok(model) => {
-                Ok(GpuModel::from_model(&model, device, queue, layout, label))
+                Ok(GpuModel::from_model(model, device, queue, layout, label))
             }
             Err(_) => Err(ModelLoadError::InvalidModel),
         }
     }
 
     pub fn from_model(
-        model: &Model,
+        model: Model,
         device: &Device,
         queue: &Queue,
         layout: &BindGroupLayout,

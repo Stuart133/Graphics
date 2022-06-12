@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::model::{GpuModel, ModelVertex, Vertex};
 use crate::{camera::*, texture, transform};
 use cgmath::*;
@@ -376,7 +374,7 @@ impl<'a> State<'a> {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
-            for model in self.models {
+            for model in self.models.iter() {
                 for mesh in model.meshes.iter() {
                     render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                     render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);

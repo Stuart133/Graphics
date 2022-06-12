@@ -3,6 +3,8 @@ A collection of programs written while learning computer graphics
 
 ## Potential Todo's
 
+- Add more camera tests
+- Fix mouselook bug
 - Push constants for transforming multiple models
 - Handle missing textures
 - Actually use the bump maps
