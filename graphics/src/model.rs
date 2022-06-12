@@ -187,7 +187,7 @@ impl GpuMesh {
 /// Material representation for sending to the GPU
 #[derive(Debug)]
 pub struct GpuMaterial {
-    pub diffuse_bind_group: BindGroup,
+    pub texture_bind_group: BindGroup,
 }
 
 impl GpuMaterial {
@@ -234,7 +234,7 @@ impl GpuMaterial {
         });
 
         GpuMaterial {
-            diffuse_bind_group: bind_group,
+            texture_bind_group: bind_group,
         }
     }
 }

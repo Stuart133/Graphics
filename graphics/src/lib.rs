@@ -14,6 +14,7 @@ mod camera;
 mod model;
 mod obj;
 mod render;
+mod swp;
 mod texture;
 mod transform;
 

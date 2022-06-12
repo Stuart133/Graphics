@@ -371,7 +371,7 @@ impl<'a> State<'a> {
                     if let Some(material) = mesh.material {
                         render_pass.set_bind_group(
                             0,
-                            &model.materials[material].diffuse_bind_group,
+                            &model.materials[material].texture_bind_group,
                             &[],
                         );
                     }
