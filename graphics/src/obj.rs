@@ -29,7 +29,10 @@ pub fn load_model(file: &Path) -> Result<Model, ObjLoadError> {
                         match std::fs::read_to_string(
                             file.parent().unwrap().join(Path::new(mtl_file)),
                         ) {
-                            Ok(raw_mtl) => match loader.load_mtl(raw_mtl.as_str(), file.parent().expect("file does not have parent")) {
+                            Ok(raw_mtl) => match loader.load_mtl(
+                                raw_mtl.as_str(),
+                                file.parent().expect("file does not have parent"),
+                            ) {
                                 Some(err) => return Err(err),
                                 None => {}
                             },
@@ -361,7 +364,9 @@ fn load_material(raw_material: &[&str], dir: &Path) -> Result<Material, ()> {
                     None => return Err(()),
                 },
                 "map_Kd" => match elements.next() {
-                    Some(file) => material.diffuse_texture_file = dir.join(file.to_string()).to_path_buf(),
+                    Some(file) => {
+                        material.diffuse_texture_file = dir.join(file.to_string()).to_path_buf()
+                    }
                     None => return Err(()),
                 },
                 _ => {} // Just ignore any unrecognised key

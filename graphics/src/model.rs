@@ -201,18 +201,14 @@ impl GpuMaterial {
         let diffuse_texture = texture::Texture::from_file(
             device,
             queue,
-            Path::new(&material.diffuse_texture_file),
+            &material.diffuse_texture_file.as_path(),
             "yeah",
         )
         .unwrap();
 
-        let normal_texture = texture::Texture::from_file(
-            device,
-            queue,
-            Path::new(&material.bump_map_file),
-            "normal",
-        )
-        .unwrap();
+        let normal_texture =
+            texture::Texture::from_file(device, queue, &material.bump_map_file.as_path(), "normal")
+                .unwrap();
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout,
@@ -252,9 +248,7 @@ impl<'a> GpuModel<'a> {
         label: Option<&'a str>,
     ) -> Result<GpuModel<'a>, ModelLoadError> {
         match crate::obj::load_model(model_path) {
-            Ok(model) => {
-                Ok(GpuModel::from_model(model, device, queue, layout, label))
-            }
+            Ok(model) => Ok(GpuModel::from_model(model, device, queue, layout, label)),
             Err(_) => Err(ModelLoadError::InvalidModel),
         }
     }
@@ -275,14 +269,7 @@ impl<'a> GpuModel<'a> {
             materials: model
                 .materials
                 .into_iter()
-                .map(|material| {
-                    GpuMaterial::from_material(
-                        material,
-                        device,
-                        queue,
-                        layout,
-                    )
-                })
+                .map(|material| GpuMaterial::from_material(material, device, queue, layout))
                 .collect(),
             label,
         }

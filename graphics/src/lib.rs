@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use render::{ControlEvent, State};
 use wgpu::*;
 use winit::{
@@ -20,6 +22,8 @@ pub async fn run() {
     window.set_cursor_grab(true).expect("could not grab cursor");
 
     let mut state = State::new(&window).await;
+    let model = obj::load_model(Path::new("./data/cube.obj")).expect("model loading failed");
+    state.add_model(model);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {

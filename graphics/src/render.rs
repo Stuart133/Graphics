@@ -1,4 +1,4 @@
-use crate::model::{GpuModel, ModelVertex, Vertex};
+use crate::model::{GpuModel, Model, ModelVertex, Vertex};
 use crate::{camera::*, texture, transform};
 use cgmath::*;
 use wgpu::util::*;
@@ -55,6 +55,7 @@ pub struct State<'a> {
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: RenderPipeline,
     depth_texture: texture::Texture,
+    texture_bind_group_layout: BindGroupLayout,
     camera_controller: CameraController<'a>,
     camera: Camera,
     camera_uniform: CameraUniform,
@@ -268,6 +269,7 @@ impl<'a> State<'a> {
             config,
             size,
             depth_texture,
+            texture_bind_group_layout,
             render_pipeline,
             camera_controller,
             camera,
@@ -281,19 +283,18 @@ impl<'a> State<'a> {
         }
     }
 
-    /// Load a
-    // pub fn add_model(&mut self, model: GpuModel<'a>) {
-    //     let model = GpuModel::from_file(
-    //         Path::new("data/cube.obj"),
-    //         &device,
-    //         &queue,
-    //         &texture_bind_group_layout,
-    //         Some("model"),
-    //     )
-    //     .unwrap();
+    /// Load a model into the scene
+    pub fn add_model(&mut self, model: Model) {
+        let model = GpuModel::from_model(
+            model,
+            &self.device,
+            &self.queue,
+            &self.texture_bind_group_layout,
+            Some("model"),
+        );
 
-    //     self.models.push(model);
-    // }
+        self.models.push(model);
+    }
 
     /// Recreate the render surface with the current size
     pub fn recreate(&mut self) {
