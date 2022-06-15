@@ -23,4 +23,9 @@ impl Transform {
             * Matrix4::from_translation(self.translate.into())
             * Matrix4::from_nonuniform_scale(self.scale[0], self.scale[1], self.scale[2])
     }
+
+    #[inline]
+    pub fn as_uniform(&self) -> [[f32; 4]; 4] {
+        self.build_transform_matrix().into()
+    }
 }

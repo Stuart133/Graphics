@@ -29,25 +29,7 @@ impl CameraUniform {
     }
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct TransformUniform {
-    transform: [[f32; 4]; 4],
-}
-
-impl TransformUniform {
-    fn new() -> Self {
-        TransformUniform {
-            transform: Matrix4::identity().into(),
-        }
-    }
-
-    fn update(&mut self, transform: &transform::Transform) {
-        self.transform = transform.build_transform_matrix().into()
-    }
-}
-
-pub struct State<'a> {
+pub struct Render3D<'a> {
     surface: Surface,
     device: Device,
     queue: Queue,
@@ -62,13 +44,12 @@ pub struct State<'a> {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     transform: transform::Transform,
-    transform_uniform: TransformUniform,
     transform_buffer: wgpu::Buffer,
     models: Vec<GpuModel<'a>>,
 }
 
-impl<'a> State<'a> {
-    pub async fn new(window: &Window, camera: Camera, camera_controller: CameraController<'a>) -> State<'a> {
+impl<'a> Render3D<'a> {
+    pub async fn new(window: &Window, camera: Camera, camera_controller: CameraController<'a>) -> Render3D<'a> {
         let size = window.inner_size();
 
         let instance = Instance::new(Backends::all());
@@ -153,10 +134,9 @@ impl<'a> State<'a> {
         });
 
         let transform = transform::Transform::new();
-        let transform_uniform = TransformUniform::new();
         let transform_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Transform buffer"),
-            contents: bytemuck::cast_slice(&[transform_uniform]),
+            contents: bytemuck::cast_slice(&[transform.as_uniform()]),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
@@ -266,7 +246,6 @@ impl<'a> State<'a> {
             camera_buffer,
             camera_bind_group,
             transform,
-            transform_uniform,
             transform_buffer,
             models: vec![],
         }
@@ -318,11 +297,10 @@ impl<'a> State<'a> {
             bytemuck::cast_slice(&[self.camera_uniform]),
         );
 
-        self.transform_uniform.update(&self.transform);
         self.queue.write_buffer(
             &self.transform_buffer,
             0,
-            bytemuck::cast_slice(&[self.transform_uniform]),
+            bytemuck::cast_slice(&[self.transform.as_uniform()]),
         );
 
         let output = self.surface.get_current_texture()?;

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use camera::{Camera, MoveMode, CameraController};
 use cgmath::Vector3;
-use render::{ControlEvent, State};
+use render::{ControlEvent, Render3D};
 use wgpu::*;
 use winit::{
     event::*,
@@ -35,7 +35,7 @@ pub async fn run() {
     );
     let camera_controller = CameraController::new(0.2, &MoveMode {});
 
-    let mut state = State::new(&window, camera, camera_controller).await;
+    let mut state = Render3D::new(&window, camera, camera_controller).await;
     let model = obj::load_model(Path::new("./data/sphere.obj")).expect("model loading failed");
     state.add_model(model);
 
