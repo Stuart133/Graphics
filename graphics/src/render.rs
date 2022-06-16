@@ -11,7 +11,7 @@ pub trait Renderer {
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>);
     fn input(&mut self, event: &ControlEvent) -> bool;
     fn update(&mut self);
-    fn render(&mut self) -> Result<(), SurfaceError>;    
+    fn render(&mut self) -> Result<(), SurfaceError>;
 }
 
 pub enum ControlEvent<'a> {
@@ -278,106 +278,106 @@ impl<'a> Render3D<'a> {
 }
 
 impl<'a> Renderer for Render3D<'a> {
-        /// Recreate the render surface with the current size
-        fn recreate(&mut self) {
-            self.resize(self.size);
+    /// Recreate the render surface with the current size
+    fn recreate(&mut self) {
+        self.resize(self.size);
+    }
+
+    /// Resize the render surface with new_size
+    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        if new_size.width > 0 && new_size.height > 0 {
+            self.size = new_size;
+            self.config.width = new_size.width;
+            self.config.height = new_size.height;
+            self.surface.configure(&self.device, &self.config);
+
+            self.depth_texture =
+                texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
         }
-    
-        /// Resize the render surface with new_size
-        fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-            if new_size.width > 0 && new_size.height > 0 {
-                self.size = new_size;
-                self.config.width = new_size.width;
-                self.config.height = new_size.height;
-                self.surface.configure(&self.device, &self.config);
-    
-                self.depth_texture =
-                    texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
-            }
-        }
-    
-        /// Process control input, returning true if the event was consumed
-        fn input(&mut self, event: &ControlEvent) -> bool {
-            self.camera_controller.process_events(event)
-        }
-    
-        fn update(&mut self) {}
-    
-        fn render(&mut self) -> Result<(), SurfaceError> {
-            self.camera_controller.update_camera(&mut self.camera);
-            self.camera_uniform.update_view_proj(&self.camera);
-            self.queue.write_buffer(
-                &self.camera_buffer,
-                0,
-                bytemuck::cast_slice(&[self.camera_uniform]),
-            );
-    
-            self.queue.write_buffer(
-                &self.transform_buffer,
-                0,
-                bytemuck::cast_slice(&[self.transform.as_uniform()]),
-            );
-    
-            let output = self.surface.get_current_texture()?;
-            let view = output
-                .texture
-                .create_view(&TextureViewDescriptor::default());
-            let mut encoder = self
-                .device
-                .create_command_encoder(&CommandEncoderDescriptor {
-                    label: Some("Render Encoder"),
-                });
-    
-            {
-                let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                    label: Some("Render Pass"),
-                    color_attachments: &[RenderPassColorAttachment {
-                        view: &view,
-                        resolve_target: None,
-                        ops: Operations {
-                            load: LoadOp::Clear(Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 1.0,
-                            }),
-                            store: true,
-                        },
-                    }],
-                    depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
-                        depth_ops: Some(Operations {
-                            load: LoadOp::Clear(1.0),
-                            store: true,
+    }
+
+    /// Process control input, returning true if the event was consumed
+    fn input(&mut self, event: &ControlEvent) -> bool {
+        self.camera_controller.process_events(event)
+    }
+
+    fn update(&mut self) {}
+
+    fn render(&mut self) -> Result<(), SurfaceError> {
+        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+
+        self.queue.write_buffer(
+            &self.transform_buffer,
+            0,
+            bytemuck::cast_slice(&[self.transform.as_uniform()]),
+        );
+
+        let output = self.surface.get_current_texture()?;
+        let view = output
+            .texture
+            .create_view(&TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
                         }),
-                        stencil_ops: None,
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(Operations {
+                        load: LoadOp::Clear(1.0),
+                        store: true,
                     }),
-                });
-    
-                render_pass.set_pipeline(&self.render_pipeline);
-                render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-    
-                for model in self.models.iter() {
-                    for mesh in model.meshes.iter() {
-                        render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                        render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);
-                        if let Some(material) = mesh.material {
-                            render_pass.set_bind_group(
-                                0,
-                                &model.materials[material].texture_bind_group,
-                                &[],
-                            );
-                        }
-                        render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);
+                    stencil_ops: None,
+                }),
+            });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+
+            for model in self.models.iter() {
+                for mesh in model.meshes.iter() {
+                    render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                    render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint32);
+                    if let Some(material) = mesh.material {
+                        render_pass.set_bind_group(
+                            0,
+                            &model.materials[material].texture_bind_group,
+                            &[],
+                        );
                     }
+                    render_pass.draw_indexed(0..mesh.vertex_count, 0, 0..1);
                 }
             }
-    
-            self.queue.submit(std::iter::once(encoder.finish()));
-            output.present();
-    
-            Ok(())
-        }    
+        }
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
+
+        Ok(())
+    }
 }
 
 pub struct Render2D<'a> {
@@ -393,6 +393,7 @@ pub struct Render2D<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    curves: Vec<Buffer>,
 }
 
 impl<'a> Render2D<'a> {
@@ -529,6 +530,7 @@ impl<'a> Render2D<'a> {
             camera_uniform,
             camera_buffer,
             camera_bind_group,
+            curves: vec![],
         }
     }
 }

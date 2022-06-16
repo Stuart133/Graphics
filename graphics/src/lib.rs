@@ -2,7 +2,7 @@ use std::path::Path;
 
 use camera::{Camera, CameraController, MoveMode};
 use cgmath::Vector3;
-use render::{ControlEvent, Render3D, Renderer, Render2D};
+use render::{ControlEvent, Render2D, Render3D, Renderer};
 use wgpu::*;
 use winit::{
     event::*,
@@ -11,6 +11,7 @@ use winit::{
 };
 
 mod camera;
+mod curve;
 mod model;
 mod obj;
 mod render;
