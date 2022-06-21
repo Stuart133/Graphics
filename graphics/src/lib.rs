@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use camera::{Camera, CameraController, MoveMode};
-use cgmath::{Vector3, Matrix4};
+use cgmath::{Matrix4, Vector3};
 use curve::BezierCurve;
 use render::{ControlEvent, Render2D, Render3D, Renderer};
 use wgpu::*;
@@ -53,10 +53,12 @@ pub async fn run() {
     );
     let mut render_2d = Render2D::new(&window, camera, camera_controller).await;
 
-    let curve = BezierCurve{
-        control_points: Matrix4::new(0.0, 0.0, 0.0, 0.0, 0.25, 1.0, 0.0, 0.0, 0.75, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0),
+    let curve = BezierCurve {
+        control_points: Matrix4::new(
+            0.0, 0.0, 0.0, 0.0, 0.25, 1.0, 0.0, 0.0, 0.75, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+        ),
     };
-    render_2d.add_curve(curve);    
+    render_2d.add_curve(curve);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {

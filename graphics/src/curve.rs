@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use cgmath::{Matrix4, Vector4, num_traits::Pow};
+use cgmath::{num_traits::Pow, Matrix4, Vector4};
 use wgpu::*;
 
 use crate::model::Vertex;
@@ -38,17 +38,19 @@ pub struct BezierCurve {
 impl Curve for BezierCurve {
     fn to_vertices(&self, range: Range<f32>, steps: u32) -> Vec<CurveVertex> {
         // firstly create the cubic function in the canonical basis
-            let canonical = |t: f32| -> Vector4::<f32> {
-              self.control_points * BEZIER_SPLINE * Vector4::new(1.0, t, t.pow(2.0), t.pow(3.0))
+        let canonical = |t: f32| -> Vector4<f32> {
+            self.control_points * BEZIER_SPLINE * Vector4::new(1.0, t, t.pow(2.0), t.pow(3.0))
         };
 
         let mut curve = vec![];
 
-        for i in 0..steps+1 {
-          let t = (range.end - range.start) / steps as f32 * i as f32;
+        for i in 0..steps + 1 {
+            let t = (range.end - range.start) / steps as f32 * i as f32;
 
-          let point = canonical(t);
-          curve.push(CurveVertex { position: [point.x, point.y, point.z] })
+            let point = canonical(t);
+            curve.push(CurveVertex {
+                position: [point.x, point.y, point.z],
+            })
         }
 
         curve

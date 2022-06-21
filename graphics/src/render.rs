@@ -535,7 +535,7 @@ impl<'a> Render2D<'a> {
         }
     }
 
-        /// Add a new curve to be rendered
+    /// Add a new curve to be rendered
     pub fn add_curve<T: Curve>(&mut self, curve: T) {
         let vertices = curve.to_vertices(0.0..1.0, 50);
 
@@ -547,7 +547,6 @@ impl<'a> Render2D<'a> {
 
         self.curves.push(buffer);
     }
-
 }
 
 impl<'a> Renderer for Render2D<'a> {
