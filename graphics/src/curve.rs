@@ -37,12 +37,26 @@ pub struct BezierCurve {
 
 impl Curve for BezierCurve {
     fn to_vertices(&self, range: Range<f32>, steps: u32) -> Vec<CurveVertex> {
+        let mut curve = vec![];
+
+        // Add the control points first
+        curve.push(CurveVertex {
+            position: [self.control_points.x.x, self.control_points.x.y, self.control_points.x.z]
+        });
+        curve.push(CurveVertex {
+            position: [self.control_points.y.x, self.control_points.y.y, self.control_points.y.z]
+        });
+        curve.push(CurveVertex {
+            position: [self.control_points.z.x, self.control_points.z.y, self.control_points.z.z]
+        });
+        curve.push(CurveVertex {
+            position: [self.control_points.w.x, self.control_points.w.y, self.control_points.w.z]
+        });
+
         // firstly create the cubic function in the canonical basis
         let canonical = |t: f32| -> Vector4<f32> {
             self.control_points * BEZIER_SPLINE * Vector4::new(1.0, t, t.pow(2.0), t.pow(3.0))
         };
-
-        let mut curve = vec![];
 
         for i in 0..steps + 1 {
             let t = (range.end - range.start) / steps as f32 * i as f32;
@@ -53,6 +67,7 @@ impl Curve for BezierCurve {
             })
         }
 
+        println!("{:?}", curve.len());
         curve
     }
 

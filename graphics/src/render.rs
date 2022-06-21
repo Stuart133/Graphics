@@ -624,7 +624,7 @@ impl<'a> Renderer for Render2D<'a> {
 
             for curve in self.curves.iter() {
                 render_pass.set_vertex_buffer(0, curve.slice(..));
-                render_pass.draw(0..50, 0..1)
+                render_pass.draw(0..55, 0..1)
             }
         }
 
