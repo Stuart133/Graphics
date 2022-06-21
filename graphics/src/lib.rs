@@ -56,7 +56,7 @@ pub async fn run() {
     let curve = BezierCurve{
         control_points: Matrix4::new(0.0, 0.0, 0.0, 0.0, 0.25, 1.0, 0.0, 0.0, 0.75, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0),
     };
-    let vertices = curve.to_vertices(0.0..1.0, 10);
+    render_2d.add_curve(curve);    
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {

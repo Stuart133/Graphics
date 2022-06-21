@@ -1,3 +1,4 @@
+use crate::curve::{Curve, CurveVertex};
 use crate::model::{GpuModel, Model, ModelVertex, Vertex};
 use crate::{camera::*, texture, transform};
 use cgmath::*;
@@ -482,7 +483,7 @@ impl<'a> Render2D<'a> {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[ModelVertex::desc()],
+                buffers: &[CurveVertex::desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -533,6 +534,20 @@ impl<'a> Render2D<'a> {
             curves: vec![],
         }
     }
+
+        /// Add a new curve to be rendered
+    pub fn add_curve<T: Curve>(&mut self, curve: T) {
+        let vertices = curve.to_vertices(0.0..1.0, 50);
+
+        let buffer = self.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some(&format!("Vertex Buffer")),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: BufferUsages::VERTEX,
+        });
+
+        self.curves.push(buffer);
+    }
+
 }
 
 impl<'a> Renderer for Render2D<'a> {
@@ -607,6 +622,11 @@ impl<'a> Renderer for Render2D<'a> {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+
+            for curve in self.curves.iter() {
+                render_pass.set_vertex_buffer(0, curve.slice(..));
+                render_pass.draw(0..50, 0..1)
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
