@@ -43,7 +43,7 @@ pub async fn run() {
 
     let camera_controller = CameraController::new(0.2, &MoveMode {});
     let camera = Camera::new(
-        (0.0, 10.0, 0.0).into(),
+        (0.0, 0.0, 5.0).into(),
         (0.0, 0.0, 0.0).into(),
         Vector3::unit_y(),
         window.inner_size().width as f32 / window.inner_size().height as f32,

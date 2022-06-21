@@ -602,9 +602,9 @@ impl<'a> Renderer for Render2D<'a> {
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
+                            r: 0.2,
+                            g: 0.2,
+                            b: 0.2,
                             a: 1.0,
                         }),
                         store: true,
@@ -621,7 +621,7 @@ impl<'a> Renderer for Render2D<'a> {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
             for curve in self.curves.iter() {
                 render_pass.set_vertex_buffer(0, curve.slice(..));
